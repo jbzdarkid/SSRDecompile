@@ -5,35 +5,41 @@
 #include <sstream>
 #include <iomanip>
 
-Memory::Memory(const std::wstring& processName) : _processName(processName) {
+std::shared_ptr<Memory> Memory::Create(const std::wstring& processName) {
+    auto memory = std::make_shared<Memory>();
+    memory->_processName = processName;
+
     HANDLE handle = nullptr;
     // First, get the handle of the process
     PROCESSENTRY32W entry;
     entry.dwSize = sizeof(entry);
     HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     while (Process32NextW(snapshot, &entry)) {
-        if (_processName == entry.szExeFile) {
-            _pid = entry.th32ProcessID;
-            handle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, _pid);
+        if (memory->_processName == entry.szExeFile) {
+            memory->_pid = entry.th32ProcessID;
+            handle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, memory->_pid);
             break;
         }
     }
     // Game likely not opened yet. Don't spam the log.
-    if (!handle || !_pid) return;
-    DebugPrint(L"Found " + _processName + L": PID " + std::to_wstring(_pid));
+    if (!handle || !memory->_pid) return nullptr;
+    DebugPrint(L"Found " + memory->_processName + L": PID " + std::to_wstring(memory->_pid));
 
-    _hwnd = NULL; // Will be populated later.
-
-    _baseAddress = DebugUtils::GetBaseAddress(handle);
-    if (_baseAddress == 0) {
+    memory->_baseAddress = DebugUtils::GetBaseAddress(handle);
+    if (memory->_baseAddress == 0) {
         DebugPrint("Couldn't locate base address");
-        return;
+        return nullptr;
     }
 
     // Clear sigscans to avoid duplication (or leftover sigscans from the trainer)
-    assert(_sigScans.size() == 0);
-    _sigScans.clear();
-    _handle = handle;
+    assert(memory->_sigScans.size() == 0);
+    memory->_sigScans.clear();
+    memory->_handle = handle;
+    return memory;
+}
+
+Memory::~Memory() {
+    for (auto addr : _allocations) VirtualFreeEx(_handle, (void*)addr, 0, MEM_RELEASE);
 }
 
 __int64 Memory::ReadStaticInt(__int64 offset, int index, const std::vector<byte>& data, size_t lineLength) {
@@ -155,7 +161,7 @@ void Memory::Intercept(__int64 firstLine, __int64 nextLine, const std::vector<by
     injectionBytes.insert(injectionBytes.end(), jumpBack.begin(), jumpBack.end());
 
     __int64 addr = (__int64)VirtualAllocEx(_handle, NULL, injectionBytes.size(), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-    // _allocations.emplace_back(addr);
+    _allocations.emplace_back(addr);
     WriteDataInternal(addr, &injectionBytes[0], injectionBytes.size());
 
     std::vector<byte> jumpAway = {
@@ -167,6 +173,13 @@ void Memory::Intercept(__int64 firstLine, __int64 nextLine, const std::vector<by
     // Fill any leftover space with nops
     for (size_t i=jumpAway.size(); i<static_cast<size_t>(nextLine - firstLine); i++) jumpAway.push_back(0x90);
     WriteData<byte>({firstLine}, jumpAway);
+}
+
+__int64 Memory::AllocateBuffer(size_t bufferSize, const std::vector<byte>& initialData) {
+    __int64 writeBuffer = (__int64)VirtualAllocEx(_handle, NULL, bufferSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    _allocations.emplace_back(writeBuffer);
+    WriteDataInternal(writeBuffer, &initialData[0], initialData.size());
+    return writeBuffer;
 }
 
 void Memory::ReadDataInternal(uintptr_t addr, void* buffer, size_t bufferSize) {

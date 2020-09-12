@@ -36,7 +36,10 @@ using byte = unsigned char;
 // https://github.com/fkloiber/witness-trainer/blob/master/source/foreign_process_memory.cpp
 class Memory final {
 public:
-    Memory(const std::wstring& processName);
+    static std::shared_ptr<Memory> Create(const std::wstring& processName);
+    ~Memory();
+    Memory(const Memory& memory) = delete;
+    Memory& operator=(const Memory& other) = delete;
 
     // lineLength is the number of bytes from the given index to the end of the instruction. Usually, it's 4.
     static __int64 ReadStaticInt(__int64 offset, int index, const std::vector<byte>& data, size_t lineLength = 4);
@@ -58,8 +61,9 @@ public:
     }
 
     void Intercept(__int64 lineStart, __int64 lineEnd, const std::vector<byte>& data);
+    __int64 AllocateBuffer(size_t bufferSize, const std::vector<byte>& initialData = {});
 
-// private:
+private:
     void ReadDataInternal(uintptr_t addr, void* buffer, size_t bufferSize);
     void WriteDataInternal(uintptr_t addr, const void* buffer, size_t bufferSize);
     uintptr_t ComputeOffset(std::vector<__int64> offsets);
@@ -68,8 +72,8 @@ public:
     std::wstring _processName;
     HANDLE _handle = nullptr;
     DWORD _pid = 0;
-    HWND _hwnd = NULL;
     uintptr_t _baseAddress = 0;
+    std::vector<__int64> _allocations;
 
     // Parts of Read / Write / Sigscan
     ThreadSafeAddressMap _computedAddresses;
