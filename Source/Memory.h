@@ -13,6 +13,21 @@ enum ProcStatus : WPARAM {
 };
 
 using byte = unsigned char;
+#define LONG_TO_BYTES_LE(val) \
+    static_cast<byte>((val & 0x00000000000000FF) >> 0x00), \
+    static_cast<byte>((val & 0x000000000000FF00) >> 0x08), \
+    static_cast<byte>((val & 0x0000000000FF0000) >> 0x10), \
+    static_cast<byte>((val & 0x00000000FF000000) >> 0x18), \
+    static_cast<byte>((val & 0x000000FF00000000) >> 0x20), \
+    static_cast<byte>((val & 0x0000FF0000000000) >> 0x28), \
+    static_cast<byte>((val & 0x00FF000000000000) >> 0x30), \
+    static_cast<byte>((val & 0xFF00000000000000) >> 0x38)
+
+#define INT_TO_BYTES_LE(val) \
+    static_cast<byte>((val & 0x000000FF) >> 0x00), \
+    static_cast<byte>((val & 0x0000FF00) >> 0x08), \
+    static_cast<byte>((val & 0x00FF0000) >> 0x10), \
+    static_cast<byte>((val & 0xFF000000) >> 0x18)
 
 // https://github.com/erayarslan/WriteProcessMemory-Example
 // http://stackoverflow.com/q/32798185
@@ -26,10 +41,10 @@ public:
     // lineLength is the number of bytes from the given index to the end of the instruction. Usually, it's 4.
     static __int64 ReadStaticInt(__int64 offset, int index, const std::vector<byte>& data, size_t lineLength = 4);
     using ScanFunc = std::function<void(__int64 offset, int index, const std::vector<byte>& data)>;
-    void AddSigScan(const std::vector<byte>& scanBytes, const ScanFunc& scanFunc);
+    void AddSigScan(const std::string& scan, const ScanFunc& scanFunc);
     [[nodiscard]] size_t ExecuteSigScans();
 
-    template<class T>
+    template<typename T>
     inline std::vector<T> ReadData(const std::vector<__int64>& offsets, size_t numItems) {
         std::vector<T> data(numItems, 0);
         ReadDataInternal(ComputeOffset(offsets), &data[0], numItems * sizeof(T));
@@ -37,14 +52,14 @@ public:
     }
     std::string ReadString(std::vector<__int64> offsets);
 
-    template <class T>
+    template <typename T>
     inline void WriteData(const std::vector<__int64>& offsets, const std::vector<T>& data) {
         WriteDataInternal(ComputeOffset(offsets), &data[0], sizeof(T) * data.size());
     }
 
     void Intercept(__int64 lineStart, __int64 lineEnd, const std::vector<byte>& data);
 
-private:
+// private:
     void ReadDataInternal(uintptr_t addr, void* buffer, size_t bufferSize);
     void WriteDataInternal(uintptr_t addr, const void* buffer, size_t bufferSize);
     uintptr_t ComputeOffset(std::vector<__int64> offsets);

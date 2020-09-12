@@ -41,7 +41,27 @@ __int64 Memory::ReadStaticInt(__int64 offset, int index, const std::vector<byte>
     return offset + index + lineLength + *(int*)&data[index];
 }
 
-void Memory::AddSigScan(const std::vector<byte>& scanBytes, const ScanFunc& scanFunc) {
+void Memory::AddSigScan(const std::string& scan, const ScanFunc& scanFunc) {
+    std::vector<byte> scanBytes;
+    bool first = true; // First half of the byte
+    for (const char c : scan) {
+        if (c == ' ') continue;
+
+        byte b = 0x00;
+        if (c >= '0' && c <= '9') b = c - '0';
+        else if (c >= 'A' && c <= 'F') b = c - 'A' + 0xA;
+        else if (c >= 'a' && c <= 'f') b = c - 'a' + 0xa;
+        else continue; // TODO: Support '?', somehow
+        if (first) {
+            scanBytes.push_back(b * 0x10);
+            first = false;
+        } else {
+            scanBytes[scanBytes.size()-1] |= b;
+            first = true;
+        }
+    }
+    assert(first);
+
     _sigScans[scanBytes] = {false, scanFunc};
 }
 
@@ -116,25 +136,37 @@ std::string Memory::ReadString(std::vector<__int64> offsets) {
     return name;
 }
 
-void Memory::Intercept(__int64 lineStart, __int64 lineEnd, const std::vector<byte>& data) {
-    auto replacedData = ReadData<byte>({lineStart}, lineEnd - lineStart);
-    // TODO: Pad jumpAway with 0xCC (or 0x90)
-    std::vector<byte> jumpAway = {0x48, 0xB8, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0xFF, 0xE0}; // TODO: Jump to addr
-    assert(replacedData.size() > jumpAway.size());
+void Memory::Intercept(__int64 firstLine, __int64 nextLine, const std::vector<byte>& data) {
+    // We need enough space for the jump in the source code
+    assert(nextLine - firstLine >= 14);
 
-    std::vector<byte> jumpBack = {0x48, 0xB8, 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x01, 0xFF, 0xE0}; // TODO: Jump to lineEnd + 1
+    std::vector<byte> jumpBack = {
+        0x50,                                                        // push rax
+        0x48, 0xB8, LONG_TO_BYTES_LE(_baseAddress + firstLine + 13), // mov rax, firstLine + 13
+        0xFF, 0xE0,                                                  // jmp rax
+    };
 
+    std::vector<byte> injectionBytes = {0x58}; // pop rax (before executing code that might need it)
+    injectionBytes.insert(injectionBytes.end(), data.begin(), data.end());
+    injectionBytes.push_back(0x90); // Padding nop
+    std::vector<byte> replacedCode = ReadData<byte>({firstLine}, nextLine - firstLine);
+    injectionBytes.insert(injectionBytes.end(), replacedCode.begin(), replacedCode.end());
+    injectionBytes.push_back(0x90); // Padding nop
+    injectionBytes.insert(injectionBytes.end(), jumpBack.begin(), jumpBack.end());
 
-    SIZE_T sizeNeeded = data.size() + replacedData.size() + jumpBack.size(); // Space for injected data + removed line + return jump
-    __int64 addr = (__int64)VirtualAllocEx(_handle, NULL, sizeNeeded, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    __int64 addr = (__int64)VirtualAllocEx(_handle, NULL, injectionBytes.size(), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
     // _allocations.emplace_back(addr);
-    WriteData<byte>({lineStart}, jumpAway);
+    WriteDataInternal(addr, &injectionBytes[0], injectionBytes.size());
 
-    WriteDataInternal(addr, &data[0], data.size());
-    addr += data.size();
-    WriteDataInternal(addr, &replacedData[0], replacedData.size());
-    addr += replacedData.size();
-    WriteDataInternal(addr, &jumpBack[0], jumpBack.size());
+    std::vector<byte> jumpAway = {
+        0x50,                               // push rax
+        0x48, 0xB8, LONG_TO_BYTES_LE(addr), // mov rax, addr
+        0xFF, 0xE0,                         // jmp rax
+        0x58,                               // pop rax (we return to this opcode)
+    };
+    // Fill any leftover space with nops
+    for (size_t i=jumpAway.size(); i<static_cast<size_t>(nextLine - firstLine); i++) jumpAway.push_back(0x90);
+    WriteData<byte>({firstLine}, jumpAway);
 }
 
 void Memory::ReadDataInternal(uintptr_t addr, void* buffer, size_t bufferSize) {
