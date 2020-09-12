@@ -6,7 +6,7 @@
 #include <iomanip>
 
 std::shared_ptr<Memory> Memory::Create(const std::wstring& processName) {
-    auto memory = std::make_shared<Memory>();
+    auto memory = std::shared_ptr<Memory>(new Memory());
     memory->_processName = processName;
 
     HANDLE handle = nullptr;

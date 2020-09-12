@@ -64,6 +64,7 @@ public:
     __int64 AllocateBuffer(size_t bufferSize, const std::vector<byte>& initialData = {});
 
 private:
+    Memory() = default;
     void ReadDataInternal(uintptr_t addr, void* buffer, size_t bufferSize);
     void WriteDataInternal(uintptr_t addr, const void* buffer, size_t bufferSize);
     uintptr_t ComputeOffset(std::vector<__int64> offsets);
