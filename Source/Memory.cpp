@@ -39,6 +39,7 @@ std::shared_ptr<Memory> Memory::Create(const std::wstring& processName) {
 }
 
 Memory::~Memory() {
+    for (const auto& interception : _interceptions) Unintercept(std::get<0>(interception), std::get<1>(interception), std::get<2>(interception));
     for (auto addr : _allocations) VirtualFreeEx(_handle, (void*)addr, 0, MEM_RELEASE);
 }
 
@@ -161,7 +162,6 @@ void Memory::Intercept(__int64 firstLine, __int64 nextLine, const std::vector<by
     injectionBytes.insert(injectionBytes.end(), jumpBack.begin(), jumpBack.end());
 
     __int64 addr = (__int64)VirtualAllocEx(_handle, NULL, injectionBytes.size(), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-    _allocations.emplace_back(addr);
     WriteDataInternal(addr, &injectionBytes[0], injectionBytes.size());
 
     std::vector<byte> jumpAway = {
@@ -173,6 +173,13 @@ void Memory::Intercept(__int64 firstLine, __int64 nextLine, const std::vector<by
     // Fill any leftover space with nops
     for (size_t i=jumpAway.size(); i<static_cast<size_t>(nextLine - firstLine); i++) jumpAway.push_back(0x90);
     WriteData<byte>({firstLine}, jumpAway);
+
+    _interceptions.emplace_back(firstLine, replacedCode, addr);
+}
+
+void Memory::Unintercept(__int64 firstLine, const std::vector<byte>& replacedCode, __int64 addr) {
+    WriteData<byte>({firstLine}, replacedCode);
+    VirtualFreeEx(_handle, (void*)addr, 0, MEM_RELEASE);
 }
 
 __int64 Memory::AllocateBuffer(size_t bufferSize, const std::vector<byte>& initialData) {

@@ -42,8 +42,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         memory->Intercept(offset + index + 15, offset + index + 29, {
             0x41, 0x80, 0xF8, 0x77,                        // cmp dl, 'w'         ; 
             0x75, 0x03,                                    // jne +03             ;
-            // 0x41, 0xB0, 0x73,                              // mov r8b, 's'        ;
-            0x41, 0xB4, 0x73,                              // mov r8b, 's'        ;
+            0x41, 0xB0, 0x73,                              // mov r8b, 's'        ;
 
             // 0x81, 0xFA, INT_TO_BYTES_LE(WM_KEYDOWN),       // cmp edx, 0x100       ;
             // 0x75, 0x23,                                    // jne end              ; If the message is not WM_KEYDOWN, do nothing.

@@ -38,7 +38,7 @@ class Memory final {
 public:
     static std::shared_ptr<Memory> Create(const std::wstring& processName);
     ~Memory();
-    Memory(const Memory& memory) = delete;
+    Memory(const Memory& other) = delete;
     Memory& operator=(const Memory& other) = delete;
 
     // lineLength is the number of bytes from the given index to the end of the instruction. Usually, it's 4.
@@ -60,7 +60,8 @@ public:
         WriteDataInternal(ComputeOffset(offsets), &data[0], sizeof(T) * data.size());
     }
 
-    void Intercept(__int64 lineStart, __int64 lineEnd, const std::vector<byte>& data);
+    void Intercept(__int64 firstLine, __int64 nextLine, const std::vector<byte>& data);
+    void Unintercept(__int64 firstLine, const std::vector<byte>& replacedCode, __int64 addr);
     __int64 AllocateBuffer(size_t bufferSize, const std::vector<byte>& initialData = {});
 
 private:
@@ -75,6 +76,7 @@ private:
     DWORD _pid = 0;
     uintptr_t _baseAddress = 0;
     std::vector<__int64> _allocations;
+    std::vector<std::tuple<__int64, std::vector<byte>, __int64>> _interceptions;
 
     // Parts of Read / Write / Sigscan
     ThreadSafeAddressMap _computedAddresses;
