@@ -29,6 +29,10 @@ using byte = unsigned char;
     static_cast<byte>((val & 0x00FF0000) >> 0x10), \
     static_cast<byte>((val & 0xFF000000) >> 0x18)
 
+#define ARGCOUNT(...) std::tuple_size<decltype(std::make_tuple(__VA_ARGS__))>::value
+#define IF(...) __VA_ARGS__
+#define THEN(...) ARGCOUNT(__VA_ARGS__), __VA_ARGS__
+
 // https://github.com/erayarslan/WriteProcessMemory-Example
 // http://stackoverflow.com/q/32798185
 // http://stackoverflow.com/q/36018838
