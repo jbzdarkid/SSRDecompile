@@ -149,7 +149,7 @@ void Memory::Intercept(__int64 firstLine, __int64 nextLine, const std::vector<by
 
     std::vector<byte> jumpBack = {
         0x50,                                                        // push rax
-        0x48, 0xB8, LONG_TO_BYTES_LE(_baseAddress + firstLine + 13), // mov rax, firstLine + 13
+        0x48, 0xB8, LONG_TO_BYTES(_baseAddress + firstLine + 13), // mov rax, firstLine + 13
         0xFF, 0xE0,                                                  // jmp rax
     };
 
@@ -166,7 +166,7 @@ void Memory::Intercept(__int64 firstLine, __int64 nextLine, const std::vector<by
 
     std::vector<byte> jumpAway = {
         0x50,                               // push rax
-        0x48, 0xB8, LONG_TO_BYTES_LE(addr), // mov rax, addr
+        0x48, 0xB8, LONG_TO_BYTES(addr), // mov rax, addr
         0xFF, 0xE0,                         // jmp rax
         0x58,                               // pop rax (we return to this opcode)
     };

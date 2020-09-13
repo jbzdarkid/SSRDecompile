@@ -40,20 +40,20 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
     memory->AddSigScan("48 83 EC 40 48 89 78 10", [memory, buffer, bufferSize](__int64 offset, int index, const std::vector<byte>& data){
         memory->Intercept(offset + index + 15, offset + index + 29, {
-            IF(0x41, 0x80, 0xF8, 0x77, 0x75),                        // cmp dl, 'w',        ; If dl == 'w'
-            THEN(0x41, 0xB0, 0x73),                                  // mov r8b, 's'        ;
+            IF_EQ(0x41, 0x80, 0xF8, 0x77),                         // cmp dl, 'w',         ; If dl == 'w'
+            THEN(0x41, 0xB0, 0x73),                                // mov r8b, 's'         ;
 
-            // 0x81, 0xFA, INT_TO_BYTES_LE(WM_KEYDOWN),       // cmp edx, 0x100       ;
-            // 0x75, 0x23,                                    // jne end              ; If the message is not WM_KEYDOWN, do nothing.
-
-            0x48, 0xBB, LONG_TO_BYTES_LE(buffer),                    // mov rbx, buffer      ; 
-            0x4C, 0x8B, 0x33,                                        // mov r14, [rbx]       ; R14 = buffer size
-            IF(0x49, 0x81, 0xFE, INT_TO_BYTES_LE(bufferSize), 0x73), // cmp r14, bufferSize  ; If the buffer is not full
-            THEN(
-                0x49, 0x83, 0xC6, 0x01,                              // add r14, 1           ; R14 = new buffer size (entry size = 1 byte)
-                0x4C, 0x89, 0x33,                                    // mov [rbx], r14       ; Increment the 'next empty slot'
-                0x49, 0x01, 0xDE,                                    // add r14, rbx         ; R14 = first empty buffer slot
-                0x45, 0x88, 0x06                                     // mov [r14], r8b       ; Write the input into the empty slot
+            IF_EQ(0x81, 0xFA, INT_TO_BYTES(WM_KEYDOWN)),           // cmp edx, 0x100       ; If edx == WM_KEYDOWN
+            THEN(                                           
+                0x48, 0xBB, LONG_TO_BYTES(buffer),                 // mov rbx, buffer      ; 
+                0x4C, 0x8B, 0x33,                                  // mov r14, [rbx]       ; R14 = buffer size
+                IF_LT(0x49, 0x81, 0xFE, INT_TO_BYTES(bufferSize)), // cmp r14, bufferSize  ; If the buffer is not full
+                THEN(
+                    0x49, 0x83, 0xC6, 0x01,                        // add r14, 1           ; R14 = new buffer size (entry size = 1 byte)
+                    0x4C, 0x89, 0x33,                              // mov [rbx], r14       ; Increment the 'next empty slot'
+                    0x49, 0x01, 0xDE,                              // add r14, rbx         ; R14 = first empty buffer slot
+                    0x45, 0x88, 0x06                               // mov [r14], r8b       ; Write the input into the empty slot
+                )
             )
         });
     });

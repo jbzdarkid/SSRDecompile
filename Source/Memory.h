@@ -13,7 +13,8 @@ enum ProcStatus : WPARAM {
 };
 
 using byte = unsigned char;
-#define LONG_TO_BYTES_LE(val) \
+// Note: Little endian
+#define LONG_TO_BYTES(val) \
     static_cast<byte>((val & 0x00000000000000FF) >> 0x00), \
     static_cast<byte>((val & 0x000000000000FF00) >> 0x08), \
     static_cast<byte>((val & 0x0000000000FF0000) >> 0x10), \
@@ -23,14 +24,21 @@ using byte = unsigned char;
     static_cast<byte>((val & 0x00FF000000000000) >> 0x30), \
     static_cast<byte>((val & 0xFF00000000000000) >> 0x38)
 
-#define INT_TO_BYTES_LE(val) \
+// Note: Little endian
+#define INT_TO_BYTES(val) \
     static_cast<byte>((val & 0x000000FF) >> 0x00), \
     static_cast<byte>((val & 0x0000FF00) >> 0x08), \
     static_cast<byte>((val & 0x00FF0000) >> 0x10), \
     static_cast<byte>((val & 0xFF000000) >> 0x18)
 
 #define ARGCOUNT(...) std::tuple_size<decltype(std::make_tuple(__VA_ARGS__))>::value
-#define IF(...) __VA_ARGS__
+
+#define IF_GE(...) __VA_ARGS__, 0x72 // jb
+#define IF_LT(...) __VA_ARGS__, 0x73 // jae
+#define IF_NE(...) __VA_ARGS__, 0x74 // je
+#define IF_EQ(...) __VA_ARGS__, 0x75 // jne
+#define IF_GT(...) __VA_ARGS__, 0x76 // jbe
+#define IF_LE(...) __VA_ARGS__, 0x77 // ja
 #define THEN(...) ARGCOUNT(__VA_ARGS__), __VA_ARGS__
 
 // https://github.com/erayarslan/WriteProcessMemory-Example
