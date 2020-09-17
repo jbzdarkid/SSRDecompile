@@ -157,10 +157,11 @@ void Memory::Intercept(__int64 firstLine, __int64 nextLine, const std::vector<by
     // We need enough space for the jump in the source code
     assert(nextLine - firstLine >= 14);
 
+    assert(false); // Change rax -> r11 so I can peek at the retval
     std::vector<byte> jumpBack = {
-        0x50,                                                     // push rax
-        0x48, 0xB8, LONG_TO_BYTES(firstLine + 13), // mov rax, firstLine + 13
-        0xFF, 0xE0,                                               // jmp rax
+        0x50,                                       // push rax
+        0x48, 0xB8, LONG_TO_BYTES(firstLine + 13),  // mov rax, firstLine + 13
+        0xFF, 0xE0,                                 // jmp rax
     };
 
     std::vector<byte> injectionBytes = {0x58}; // pop rax (before executing code that might need it)

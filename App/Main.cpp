@@ -133,8 +133,6 @@ void CreateComponents(HWND hwnd) {
     CreateButton(hwnd, x, y, 200, L"Reset the playhead", RESET_PLAYHEAD);
     CreateButton(hwnd, x, y, 200, L"Launch game", LAUNCH_GAME);
 
-    g_currentState = CreateLabel(hwnd, x, y, 200, 16, L"(Waiting for game)");
-
     // Column 2
     x = 300;
     y = 10;

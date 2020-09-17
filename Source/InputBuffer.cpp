@@ -11,11 +11,15 @@ std::shared_ptr<InputBuffer> InputBuffer::Create()
     auto inputBuffer = std::shared_ptr<InputBuffer>(new InputBuffer());
     inputBuffer->_memory = memory;
 
-    __int64 firstLine = 0, nextLine = 0;
-    // Targeting Game.Playerinputstring (C#)
-    memory->AddSigScan("BE 03000000 48 8B C6", [&firstLine, &nextLine](__int64 address, const std::vector<byte>& data) {
-        firstLine = address + 5;
-        nextLine = address + 20;
+    __int64 playerInputString = 0;
+    __int64 getButtonDown = 0;
+    // Game.Playerinputstring
+    memory->AddSigScan("BE 03000000 48 8B C6", [&playerInputString](__int64 address, const std::vector<byte>& data) {
+        playerInputString = address + 5;
+    });
+    // Rewired.Player.GetButton
+    memory->AddSigScan("E9 58000000 48 8B 47 10", [&getButtonDown](__int64 address, const std::vector<byte>& data) {
+        getButtonDown = address + 93;
     });
 
     size_t notFound = memory->ExecuteSigScans();
@@ -27,13 +31,13 @@ std::shared_ptr<InputBuffer> InputBuffer::Create()
     inputBuffer->SetMode(Nothing);
     inputBuffer->WriteData(std::vector<Direction>(BUFFER_SIZE - 9, None));
 
-    memory->Intercept(firstLine, nextLine, {
+    memory->Intercept(playerInputString, playerInputString + 15, {
         // direction is in sil (single byte, but the register is technically a long because C#)
         0x50,                                                   // push rax
         0x53,                                                   // push rbx
         0x51,                                                   // push rcx
         0xA0, LONG_TO_BYTES(buffer+8),                          // mov al, [buffer+8]   ; al = operation mode
-        IF_LT(0x3C, 0x10),                                      // cmp al, 2            ; If we're in an active mode
+        IF_LT(0x3C, 0x10),                                      // cmp al, 0x10         ; If we're in an active mode
         THEN(                                                   //
             0x48, 0xBB, LONG_TO_BYTES(buffer),                  // mov rbx, buffer
             0x48, 0x8B, 0x0B,                                   // mov rcx, [rbx]       ; rcx = current buffer size
@@ -71,6 +75,46 @@ std::shared_ptr<InputBuffer> InputBuffer::Create()
         0x5B,                                                   // pop rbx
         0x58,                                                   // pop rax
     });  
+
+    #define UNDO 'u', '\0', 'n', '\0', 'd', '\0', 'o', '\0'
+    memory->Intercept(getButtonDown, getButtonDown + 15, {
+        // "is undo pressed" is in rax.
+        // rdi, r15 are safe registers
+        0x53,                                                   // push rbx
+        0x51,                                                   // push rcx
+        0x48, 0xBB, UNDO,                                       // mov rbx, 'undo'
+        0x48, 0x8B, 0x4D, 0xE8,                                 // mov rcx, [rbp-18]    ; Reload the button string from the local variable
+        IF_EQ(0x48, 0x39, 0x59, 0x20),                          // cmp [rcx+20], rbx    ; This code only runs for the 'undo' button. We aren't intercepting other inputs.
+        THEN(                                                   //
+            0x48, 0xBB, LONG_TO_BYTES(buffer),                  // mov rbx, buffer
+            0x40, 0x8A, 0x7B, 0x08,                             // mov dil, [rbx+8]     ; dil = operation mode
+            IF_EQ(0x40, 0x80, 0xFF, Recording),                 // cmp dil, 0           ; If we're in recording mode
+            THEN(                                               //
+                IF_EQ(0x40, 0x80, 0xFE, 0x08),                  // cmp al, 0x01         ; If undo was pressed, allow it through, and go back one step in the buffer.
+                THEN(                                           //
+                    0x48, 0x8B, 0x0B,                           // mov rcx, [rbx]       ; rcx = current playhead
+                    0x48, 0xFF, 0xC9,                           // dec rcx
+                    IF_GE(0x48, 0x83, 0xF9, 0x08),              // cmp rcx, 8           ; Ensure that we don't bring the playhead too far back
+                    THEN(0x48, 0x89, 0x0B)                      // mov [rbx], rcx       ; Write new playhead
+                )                                               //
+            ),                                                  //
+            IF_EQ(0x40, 0x80, 0xFF, Playing),                   // cmp dil, 1           ; If we're in playback mode
+            THEN(0x30, 0xC0),                                   // xor al, al           ; Swallow the undo press
+                                                                //
+            IF_EQ(0x40, 0x80, 0xFF, BackStep),                  // cmp dil, 0x10        ; Backstep (playback mode)
+            THEN(                                               //                      ; Move the playhead back, and emit an undo
+                0x48, 0x8B, 0x0B,                               // mov rcx, [rbx]       ; rcx = current playhead
+                0x48, 0xFF, 0xC9,                               // dec rcx
+                IF_GE(0x48, 0x83, 0xF9, 0x08),                  // cmp rcx, 8           ; Ensure that we don't bring the playhead too far back
+                THEN(                                           //
+                    0x48, 0x89, 0x0B,                           // mov [rbx], rcx       ; Write new playhead
+                    0xB0, 0x01                                  // mov al, 0x01
+                )                                               //
+            )                                                   //
+        ),                                                      //
+        0x59,                                                   // pop rcx
+        0x5B,                                                   // pop rbx
+    });
 
     return inputBuffer;
 }
