@@ -73,23 +73,25 @@ void Memory::AddSigScan(const std::string& scan, const ScanFunc& scanFunc) {
 }
 
 int find(const std::vector<byte> &data, const std::vector<byte>& search, size_t startIndex = 0) {
-    size_t maxI = data.size() - search.size();
+    const byte* dataBegin = &data[0];
+    const byte* searchBegin = &search[0];
+    size_t maxI = data.size();
     size_t maxJ = search.size();
-    for (size_t i=startIndex; i<maxI; i++) {
+
+    for (int i = 0; i<maxI; i++) {
         bool match = true;
         for (size_t j=0; j<maxJ; j++) {
-            if (data[i+j] == search[j]) {
+            if (*(dataBegin + i + j) == *(searchBegin + j)) {
                 continue;
             }
             match = false;
             break;
         }
-        if (match) return static_cast<int>(i);
+        if (match) return i;
     }
     return -1;
 }
 
-#define BUFFER_SIZE 0x10000 // 10 KB
 size_t Memory::ExecuteSigScans() {
     size_t notFound = 0;
     for (const auto& [_, sigScan] : _sigScans) if (!sigScan.found) notFound++;
