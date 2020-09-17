@@ -5,6 +5,7 @@
 #include <sstream>
 #include <iostream>
 #include <ctime>
+#include <iomanip>
 
 void DebugPrint(const std::string& text) {
 #ifdef _DEBUG
@@ -73,6 +74,13 @@ uint64_t DebugUtils::GetBaseAddress(HANDLE process) {
     MODULEINFO moduleInfo;
     GetModuleInformation(process, modules[0], &moduleInfo, sizeof(moduleInfo));
     return reinterpret_cast<uint64_t>(moduleInfo.lpBaseOfDll);
+}
+
+std::string DebugUtils::ToString(__int64 address)
+{
+    std::stringstream ss;
+    ss << "0x" << std::setfill('0') << std::hex << std::uppercase << address;
+    return ss.str();
 }
 
 // Note: This function must work properly even in release mode, since we will need to generate callbacks for release exes.

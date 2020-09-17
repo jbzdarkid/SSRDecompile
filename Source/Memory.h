@@ -40,6 +40,7 @@ using byte = unsigned char;
 #define IF_GT(...) __VA_ARGS__, 0x76 // jbe
 #define IF_LE(...) __VA_ARGS__, 0x77 // ja
 #define THEN(...) ARGCOUNT(__VA_ARGS__), __VA_ARGS__
+#define DO_WHILE(...) __VA_ARGS__, static_cast<byte>(-1 - ARGCOUNT(__VA_ARGS__))
 
 // https://github.com/erayarslan/WriteProcessMemory-Example
 // http://stackoverflow.com/q/32798185
@@ -55,26 +56,34 @@ public:
 
     // lineLength is the number of bytes from the given index to the end of the instruction. Usually, it's 4.
     static __int64 ReadStaticInt(__int64 offset, int index, const std::vector<byte>& data, size_t lineLength = 4);
-    using ScanFunc = std::function<void(__int64 offset, int index, const std::vector<byte>& data)>;
+    using ScanFunc = std::function<void(__int64 address, const std::vector<byte>& data)>;
     void AddSigScan(const std::string& scan, const ScanFunc& scanFunc);
     [[nodiscard]] size_t ExecuteSigScans();
 
     template<typename T>
-    inline std::vector<T> ReadData(const std::vector<__int64>& offsets, size_t numItems) {
+    inline std::vector<T> ReadData(__int64 addr, size_t numItems) {
         std::vector<T> data(numItems, 0);
-        ReadDataInternal(ComputeOffset(offsets), &data[0], numItems * sizeof(T));
+        ReadDataInternal(addr, &data[0], numItems * sizeof(T));
         return data;
+    }
+    template<typename T>
+    inline std::vector<T> ReadData(const std::vector<__int64>& offsets, size_t numItems) {
+        return ReadData<T>(ComputeOffset(offsets), numItems);
     }
     std::string ReadString(std::vector<__int64> offsets);
 
     template <typename T>
+    inline void WriteData(__int64 address, const std::vector<T>& data) {
+        WriteDataInternal(address, &data[0], sizeof(T) * data.size());
+    }
+    template <typename T>
     inline void WriteData(const std::vector<__int64>& offsets, const std::vector<T>& data) {
-        WriteDataInternal(ComputeOffset(offsets), &data[0], sizeof(T) * data.size());
+        WriteData<T>(ComputeOffset(offsets), data);
     }
 
     void Intercept(__int64 firstLine, __int64 nextLine, const std::vector<byte>& data);
     void Unintercept(__int64 firstLine, const std::vector<byte>& replacedCode, __int64 addr);
-    __int64 AllocateBuffer(size_t bufferSize, const std::vector<byte>& initialData = {});
+    __int64 AllocateBuffer(size_t bufferSize);
 
 private:
     Memory() = default;
@@ -87,7 +96,7 @@ private:
     HANDLE _handle = nullptr;
     DWORD _pid = 0;
     uintptr_t _baseAddress = 0;
-    std::vector<__int64> _allocations;
+    std::vector<void*> _allocations;
     std::vector<std::tuple<__int64, std::vector<byte>, __int64>> _interceptions;
 
     // Parts of Read / Write / Sigscan

@@ -40,7 +40,7 @@ std::shared_ptr<Memory> Memory::Create(const std::wstring& processName) {
 
 Memory::~Memory() {
     for (const auto& interception : _interceptions) Unintercept(std::get<0>(interception), std::get<1>(interception), std::get<2>(interception));
-    for (auto addr : _allocations) VirtualFreeEx(_handle, (void*)addr, 0, MEM_RELEASE);
+    for (void* addr : _allocations) VirtualFreeEx(_handle, addr, 0, MEM_RELEASE);
 }
 
 __int64 Memory::ReadStaticInt(__int64 offset, int index, const std::vector<byte>& data, size_t lineLength) {
@@ -73,9 +73,11 @@ void Memory::AddSigScan(const std::string& scan, const ScanFunc& scanFunc) {
 }
 
 int find(const std::vector<byte> &data, const std::vector<byte>& search, size_t startIndex = 0) {
-    for (size_t i=startIndex; i<data.size() - search.size(); i++) {
+    size_t maxI = data.size() - search.size();
+    size_t maxJ = search.size();
+    for (size_t i=startIndex; i<maxI; i++) {
         bool match = true;
-        for (size_t j=0; j<search.size(); j++) {
+        for (size_t j=0; j<maxJ; j++) {
             if (data[i+j] == search[j]) {
                 continue;
             }
@@ -91,18 +93,24 @@ int find(const std::vector<byte> &data, const std::vector<byte>& search, size_t 
 size_t Memory::ExecuteSigScans() {
     size_t notFound = 0;
     for (const auto& [_, sigScan] : _sigScans) if (!sigScan.found) notFound++;
-    std::vector<byte> buff;
-    buff.resize(BUFFER_SIZE + 0x100); // padding in case the sigscan is past the end of the buffer
 
-    for (uintptr_t i = 0; i < 0x1'000'000'000; i += BUFFER_SIZE) {
+    MEMORY_BASIC_INFORMATION memoryInfo;
+    __int64 baseAddress = 0;
+    while (VirtualQueryEx(_handle, (void*)baseAddress, &memoryInfo, sizeof(memoryInfo))) {
+        baseAddress = (__int64)memoryInfo.BaseAddress + memoryInfo.RegionSize;
+        if (memoryInfo.State & MEM_FREE) continue;
+
+        std::vector<byte> buff;
+        buff.resize(memoryInfo.RegionSize);
         SIZE_T numBytesWritten;
-        if (!ReadProcessMemory(_handle, reinterpret_cast<void*>(_baseAddress + i), &buff[0], buff.size(), &numBytesWritten)) continue;
+        if (!ReadProcessMemory(_handle, (void*)((__int64)memoryInfo.BaseAddress), &buff[0], buff.size(), &numBytesWritten)) continue;
         buff.resize(numBytesWritten);
+
         for (auto& [scanBytes, sigScan] : _sigScans) {
             if (sigScan.found) continue;
             int index = find(buff, scanBytes);
             if (index == -1) continue;
-            sigScan.scanFunc(i, index, buff); // We're expecting i to be relative to the base address here.
+            sigScan.scanFunc((__int64)memoryInfo.BaseAddress + index, buff);
             sigScan.found = true;
             notFound--;
         }
@@ -148,9 +156,9 @@ void Memory::Intercept(__int64 firstLine, __int64 nextLine, const std::vector<by
     assert(nextLine - firstLine >= 14);
 
     std::vector<byte> jumpBack = {
-        0x50,                                                        // push rax
-        0x48, 0xB8, LONG_TO_BYTES(_baseAddress + firstLine + 13), // mov rax, firstLine + 13
-        0xFF, 0xE0,                                                  // jmp rax
+        0x50,                                                     // push rax
+        0x48, 0xB8, LONG_TO_BYTES(firstLine + 13), // mov rax, firstLine + 13
+        0xFF, 0xE0,                                               // jmp rax
     };
 
     std::vector<byte> injectionBytes = {0x58}; // pop rax (before executing code that might need it)
@@ -162,13 +170,15 @@ void Memory::Intercept(__int64 firstLine, __int64 nextLine, const std::vector<by
     injectionBytes.insert(injectionBytes.end(), jumpBack.begin(), jumpBack.end());
 
     __int64 addr = (__int64)VirtualAllocEx(_handle, NULL, injectionBytes.size(), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    DebugPrint("Source address: " + DebugUtils::ToString(firstLine));
+    DebugPrint("Injection address: " + DebugUtils::ToString(addr));
     WriteDataInternal(addr, &injectionBytes[0], injectionBytes.size());
 
     std::vector<byte> jumpAway = {
-        0x50,                               // push rax
+        0x50,                            // push rax
         0x48, 0xB8, LONG_TO_BYTES(addr), // mov rax, addr
-        0xFF, 0xE0,                         // jmp rax
-        0x58,                               // pop rax (we return to this opcode)
+        0xFF, 0xE0,                      // jmp rax
+        0x58,                            // pop rax (we return to this opcode)
     };
     // Fill any leftover space with nops
     for (size_t i=jumpAway.size(); i<static_cast<size_t>(nextLine - firstLine); i++) jumpAway.push_back(0x90);
@@ -182,19 +192,23 @@ void Memory::Unintercept(__int64 firstLine, const std::vector<byte>& replacedCod
     VirtualFreeEx(_handle, (void*)addr, 0, MEM_RELEASE);
 }
 
-__int64 Memory::AllocateBuffer(size_t bufferSize, const std::vector<byte>& initialData) {
-    __int64 writeBuffer = (__int64)VirtualAllocEx(_handle, NULL, bufferSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-    _allocations.emplace_back(writeBuffer);
-    WriteDataInternal(writeBuffer, &initialData[0], initialData.size());
-    return writeBuffer;
+__int64 Memory::AllocateBuffer(size_t bufferSize) {
+    void* addr = VirtualAllocEx(_handle, NULL, bufferSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    _allocations.emplace_back(addr);
+    DebugPrint("Allocated buffer: " + DebugUtils::ToString((__int64)addr));
+    return (__int64)addr;
 }
 
 void Memory::ReadDataInternal(uintptr_t addr, void* buffer, size_t bufferSize) {
     assert(bufferSize > 0);
     if (!_handle) return;
     // Ensure that the buffer size does not cause a read across a page boundary.
-    if (bufferSize > 0x1000 - (addr & 0x0000FFF)) {
-        bufferSize = 0x1000 - (addr & 0x0000FFF);
+    MEMORY_BASIC_INFORMATION memoryInfo;
+    VirtualQueryEx(_handle, (void*)addr, &memoryInfo, sizeof(memoryInfo));
+    assert(!(memoryInfo.State & MEM_FREE));
+    __int64 endOfPage = (__int64)memoryInfo.BaseAddress + memoryInfo.RegionSize;
+    if (bufferSize > endOfPage - addr) {
+        bufferSize = endOfPage - addr;
     }
     if (!ReadProcessMemory(_handle, (void*)addr, buffer, bufferSize, nullptr)) {
         DebugPrint("Failed to read process memory.");

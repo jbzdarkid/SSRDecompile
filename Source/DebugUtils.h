@@ -8,6 +8,7 @@ public:
     static void ShowAssertDialogue();
     static std::wstring version;
     static uint64_t GetBaseAddress(HANDLE process);
+    static std::string ToString(__int64 address);
 
 private:
     static std::wstring GetStackTrace();

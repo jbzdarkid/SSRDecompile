@@ -1,8 +1,8 @@
-Assembly-CSharp/.vs/*
 Assembly-CSharp/obj/*
-.vs/*
+**/.vs/*
 *.vcxproj.user
 App/x64/*
 Source/x64/*
 x64/*
 GithubPackage/*
+*.dem
