@@ -217,7 +217,7 @@ void Memory::ReadDataInternal(uintptr_t addr, void* buffer, size_t bufferSize) {
 }
 
 void Memory::WriteDataInternal(uintptr_t addr, const void* buffer, size_t bufferSize) {
-    assert(bufferSize > 0);
+    if (buffer == nullptr || bufferSize == 0) return;
     if (!_handle) return;
     if (!WriteProcessMemory(_handle, (void*)addr, buffer, bufferSize, nullptr)) {
         DebugPrint("Failed to write process memory.");

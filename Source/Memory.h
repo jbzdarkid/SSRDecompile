@@ -74,7 +74,7 @@ public:
 
     template <typename T>
     inline void WriteData(__int64 address, const std::vector<T>& data) {
-        WriteDataInternal(address, &data[0], sizeof(T) * data.size());
+        WriteDataInternal(address, data.data(), sizeof(T) * data.size());
     }
     template <typename T>
     inline void WriteData(const std::vector<__int64>& offsets, const std::vector<T>& data) {

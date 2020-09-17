@@ -1,8 +1,12 @@
 #include "pch.h"
+
 #include "Shlobj.h"
 #include "Version.h"
 #include "Richedit.h"
-#include <fstream>
+#include "shellapi.h"
+
+#include "Memory.h"
+#include "InputBuffer.h"
 
 // Support undo & step during playback
 // Display current (and previous) steps during playback
@@ -20,115 +24,39 @@ constexpr WORD ATTACH_MEMORY     = 0x407;
 constexpr WORD RESET_PLAYHEAD    = 0x408;
 constexpr WORD PLAY_ONE_FRAME    = 0x409;
 constexpr WORD BACK_ONE_FRAME    = 0x40A;
+constexpr WORD UPDATE_DISPLAY    = 0x40B;
+constexpr WORD LAUNCH_GAME       = 0x40C;
 
-// From Direction.cs
-enum Direction : byte {
-    North,
-    South,
-    West,
-    East,
-    NorthEast,
-    SouthWest,
-    NorthWest,
-    SouthEast,
-    None,
-    Down,
-    Up,
-};
-
-std::shared_ptr<Memory> g_memory;
-__int64 g_buffer = 0;
+std::shared_ptr<InputBuffer> g_inputBuffer;
 HWND g_bufferSize;
 HWND g_currentState;
 HWND g_instructionDisplay;
-
-bool TryAttachMemory() {
-    g_memory = Memory::Create(L"Sausage.exe");
-    if (!g_memory) return false;
-
-    __int64 firstLine = 0, nextLine = 0;
-    // Targeting Game.Playerinputstring (C#)
-    g_memory->AddSigScan("BE 03000000 48 8B C6", [&firstLine, &nextLine](__int64 address, const std::vector<byte>& data) {
-        firstLine = address + 5;
-        nextLine = address + 20;
-    });
-
-    size_t notFound = g_memory->ExecuteSigScans();
-    if (notFound > 0) return false;
-
-    size_t bufferSize = 0x100000;
-    g_buffer = g_memory->AllocateBuffer(bufferSize);
-    g_memory->WriteData<byte>(g_buffer, {LONG_TO_BYTES(8), 0x02 /* NOP mode */});
-
-    g_memory->Intercept(firstLine, nextLine, {
-        // direction is in sil (single byte, but the register is technically a long because C#)
-        0x50,                                                   // push rax
-        0x53,                                                   // push rbx
-        0x51,                                                   // push rcx
-        0xA0, LONG_TO_BYTES(g_buffer+8),                        // mov al, [buffer+8]   ; al = operation mode
-        IF_LT(0x3C, 0x10),                                      // cmp al, 2            ; If we're in an active mode
-        THEN(                                                   //
-            0x48, 0xBB, LONG_TO_BYTES(g_buffer),                // mov rbx, buffer
-            0x48, 0x8B, 0x0B,                                   // mov rcx, [rbx]       ; rcx = current buffer size
-            0x48, 0xFF, 0xC1,                                   // inc rcx              ; rcx = new buffer size
-            IF_LT(0x48, 0x81, 0xF9, INT_TO_BYTES(bufferSize)),  // cmp rcx, bufferSize  ; If this would not cause the buffer to overflow
-            THEN(                                               //
-                                                                //
-                IF_EQ(0x3C, 0),                                 // cmp al, 0            ; If we're in recording mode
-                THEN(                                           //
-                    IF_NE(0x40, 0x80, 0xFE, 0x08),              // cmp sil, 0x08        ; If we took an action (dir != None)
-                    THEN(                                       //
-                        0x48, 0x89, 0x0B,                       // mov [rbx], rcx       ; Write the new buffer size
-                        0x48, 0x01, 0xCB,                       // add rbx, rcx         ; rbx = first open buffer slot
-                        0x40, 0x88, 0x33                        // mov [rbx], sil       ; Copy input from the game into buffer
-                    )                                           //
-                ),                                              //
-                                                                //
-                IF_EQ(0x3C, 1),                                 // cmp al, 1            ; If we're in playback mode
-                THEN(                                           //
-                    0x48, 0x89, 0x0B,                           // mov [rbx], rcx       ; Write the new buffer size
-                    0x48, 0x01, 0xCB,                           // add rbx, rcx         ; rbx = first open buffer slot
-                    0x40, 0x8A, 0x33                            // mov sil, [rbx]       ; Copy input from buffer to the game
-                ),                                              //
-                                                                //
-                IF_EQ(0x3C, 2),                                 // cmp al, 2            ; Single step (in playback mode)
-                THEN(                                           //
-                    0x48, 0x89, 0x0B,                           // mov [rbx], rcx       ; Write the new buffer size
-                    0xC6, 0x43, 0x08, 0x02,                     // mov [rbx+8], 0x2     ; Change mode to nop
-                    0x48, 0x01, 0xCB,                           // add rbx, rcx         ; rbx = first open buffer slot
-                    0x40, 0x8A, 0x33                            // mov sil, [rbx]       ; Copy input from buffer to the game
-                )                                               //
-            )                                                   //
-        ),                                                      //
-        0x59,                                                   // pop rcx
-        0x5B,                                                   // pop rbx
-        0x58,                                                   // pop rax
-    });
-    return true;
-}
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
     switch (message) {
         case WM_TIMER:
             switch (wParam) {
                 case ATTACH_MEMORY:
-                    if (TryAttachMemory()) {
-                        KillTimer(hwnd, ATTACH_MEMORY);
-                    }
+                    g_inputBuffer = InputBuffer::Create();
+                    if (!g_inputBuffer) break;
+                    KillTimer(hwnd, ATTACH_MEMORY);
+                    SetWindowTextW(g_currentState, L"(Doing nothing)");
                     break;
                 case GET_BUFFER_SIZE:
-                    __int64 bufferSize = g_memory->ReadData<__int64>(g_buffer, 1)[0];
-                    std::vector<byte> bufferData = g_memory->ReadData<byte>(g_buffer, bufferSize);
-                    __int64 actualBufferSize = 0;
-                    for (size_t i=9; i<bufferData.size(); i++) {
-                        if ((Direction)bufferData[i] != None) actualBufferSize++;
+                    if (g_inputBuffer) {
+                        std::wstring text = L"Recorded inputs: " + std::to_wstring(g_inputBuffer->GetPosition());
+                        SetWindowTextW(g_bufferSize, text.c_str());
                     }
-                    SetWindowTextW(g_bufferSize, (L"Recorded inputs: " + std::to_wstring(actualBufferSize)).c_str());
+                    break;
+                case UPDATE_DISPLAY:
+                    if (g_inputBuffer) {
+                        SetWindowTextA(g_instructionDisplay, g_inputBuffer->GetDisplayText().c_str());
+                    }
                     break;
             }
             break;
         case WM_DESTROY:
-            g_memory = nullptr;
+            g_inputBuffer = nullptr;
             PostQuitMessage(0);
             return 0;
         case WM_CTLCOLORSTATIC:
@@ -136,63 +64,46 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             SetBkColor((HDC)wParam, RGB(255, 255, 255));
             return 0;
         case WM_COMMAND:
+            if (LOWORD(wParam) == LAUNCH_GAME) {
+                ShellExecute(NULL, L"open", L"steam://rungameid/353540", NULL, NULL, SW_SHOWDEFAULT);
+                break;
+            }
+
+            if (!g_inputBuffer) break;
             switch (LOWORD(wParam)) {
                 case SET_RECORD_MODE:
-                    g_memory->WriteData<byte>(g_buffer+8, {0x00});
+                    g_inputBuffer->SetMode(Recording);
                     SetTimer(hwnd, GET_BUFFER_SIZE, 1000, NULL); // Start watching the buffer
                     SetWindowTextW(g_currentState, L"Recording inputs");
                     break;
                 case SET_PLAYBACK_MODE:
-                    g_memory->WriteData<byte>(g_buffer+8, {0x01});
+                    g_inputBuffer->SetMode(Playing);
                     KillTimer(hwnd, GET_BUFFER_SIZE);
                     SetWindowTextW(g_currentState, L"Playing inputs");
                     break;
                 case PLAY_ONE_FRAME:
-                    g_memory->WriteData<byte>(g_buffer+8, {0x02});
+                    g_inputBuffer->SetMode(ForwardStep);
                     KillTimer(hwnd, GET_BUFFER_SIZE);
                     SetWindowTextW(g_currentState, L"Stepped once");
                     break;
                 case BACK_ONE_FRAME:
-                    g_memory->WriteData<byte>(g_buffer+8, {0x10});
-                    // This needs to hook up to 'undo, but only once'
+                    g_inputBuffer->SetMode(BackStep);
+                    KillTimer(hwnd, GET_BUFFER_SIZE);
+                    SetWindowTextW(g_currentState, L"Stepped back once");
                     break;
                 case SET_NOP_MODE:
-                    g_memory->WriteData<byte>(g_buffer+8, {0x50});
+                    g_inputBuffer->SetMode(Nothing);
                     KillTimer(hwnd, GET_BUFFER_SIZE);
                     SetWindowTextW(g_currentState, L"(Doing nothing)");
                     break;
                 case RESET_PLAYHEAD:
-                    g_memory->WriteData<__int64>(g_buffer, {0x08});
+                    g_inputBuffer->ResetPosition();
                     break;
                 case READ_FROM_FILE:
-                    {
-                        std::vector<Direction> buffer;
-                        std::ifstream file("test.dem");
-                        for (std::string dir; std::getline(file, dir);) {
-                            if (dir == "North") buffer.push_back(North);
-                            if (dir == "South") buffer.push_back(South);
-                            if (dir == "East")  buffer.push_back(East);
-                            if (dir == "West")  buffer.push_back(West);
-                            if (dir == "None")  buffer.push_back(None);
-                        }
-                        SendMessage(hwnd, RESET_PLAYHEAD, NULL, NULL);
-                        g_memory->WriteData<Direction>(g_buffer + 9, buffer);
-                    }
+                    g_inputBuffer->ReadFromFile("test.dem");
                     break;
                 case WRITE_TO_FILE:
-                    {
-                        __int64 currentBufferSize = g_memory->ReadData<__int64>(g_buffer, 1)[0];
-                        std::vector<byte> buffer = g_memory->ReadData<byte>(g_buffer, currentBufferSize);
-                        std::ofstream file("test.dem");
-                        for (size_t i=9; i<buffer.size(); i++) {
-                            Direction dir = static_cast<Direction>(buffer[i]);
-                            if (dir == North) file << "North\n";
-                            if (dir == South) file << "South\n";
-                            if (dir == East)  file << "East\n";
-                            if (dir == West)  file << "West\n";
-                        }
-                        file.close();
-                    }
+                    g_inputBuffer->WriteToFile("test.dem");
                     break;
             }
             break;
@@ -233,16 +144,17 @@ void CreateComponents(HWND hwnd) {
     CreateButton(hwnd, x, y, 200, L"Start recording inputs", SET_RECORD_MODE);
     CreateButton(hwnd, x, y, 200, L"Stop doing anything", SET_NOP_MODE);
     CreateButton(hwnd, x, y, 200, L"Reset the playhead", RESET_PLAYHEAD);
+    CreateButton(hwnd, x, y, 200, L"Launch game", LAUNCH_GAME);
 
-    g_currentState = CreateLabel(hwnd, x, y, 200, 16, L"(Doing nothing)");
+    g_currentState = CreateLabel(hwnd, x, y, 200, 16, L"(Waiting for game)");
 
     // Column 2
     x = 300;
     y = 10;
 
-    CreateButton(hwnd, x, y, 70, L"Load", WRITE_TO_FILE);
+    CreateButton(hwnd, x, y, 70, L"Load", READ_FROM_FILE);
     y -= 30;
-    CreateButton(hwnd, x + 80, y, 70, L"Save", READ_FROM_FILE);
+    CreateButton(hwnd, x + 80, y, 70, L"Save", WRITE_TO_FILE);
 
     CreateButton(hwnd, x, y, 40, L"<", BACK_ONE_FRAME);
     y -= 30;
@@ -250,7 +162,9 @@ void CreateComponents(HWND hwnd) {
     y -= 30;
     CreateButton(hwnd, x + 110, y, 40, L">", PLAY_ONE_FRAME);
 
-    g_instructionDisplay = CreateLabel(hwnd, x, y, 100, 300, L"asdfasdfasdf\na\nb\nc\nd\ne\nf\ng\nh\n");
+    g_instructionDisplay = CreateLabel(hwnd, x, y, 100, 300);
+    SetTimer(hwnd, UPDATE_DISPLAY, 100, NULL);
+
     y += 300;
     g_bufferSize = CreateLabel(hwnd, x, y, 200, 16, L"Recorded inputs: 0");
 

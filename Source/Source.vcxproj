@@ -190,6 +190,7 @@
   <ItemGroup>
     <ClInclude Include="DebugUtils.h" />
     <ClInclude Include="HazardPointer.h" />
+    <ClInclude Include="InputBuffer.h" />
     <ClInclude Include="Memory.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="ThreadSafeAddressMap.h" />
@@ -197,6 +198,7 @@
   <ItemGroup>
     <ClCompile Include="DebugUtils.cpp" />
     <ClCompile Include="HazardPointer.cpp" />
+    <ClCompile Include="InputBuffer.cpp" />
     <ClCompile Include="Memory.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

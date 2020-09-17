@@ -2,10 +2,6 @@
 #include <ImageHlp.h>
 #include <Psapi.h>
 #include "DebugUtils.h"
-#include <sstream>
-#include <iostream>
-#include <ctime>
-#include <iomanip>
 
 void DebugPrint(const std::string& text) {
 #ifdef _DEBUG
