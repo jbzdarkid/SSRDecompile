@@ -8,11 +8,8 @@
 #include "Memory.h"
 #include "InputBuffer.h"
 
-// Support undo & step during playback
-// Display current (and previous) steps during playback
+// Support undo during playback
 // Support undo during recording
-//   This means I need to filter "None" while recording, not after
-// Support overwriting steps during playback
 
 constexpr WORD SET_RECORD_MODE   = 0x401;
 constexpr WORD SET_PLAYBACK_MODE = 0x402;
