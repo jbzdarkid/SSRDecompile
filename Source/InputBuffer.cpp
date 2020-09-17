@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "InputBuffer.h"
 
+const size_t BUFFER_SIZE = 0x100000;
+
 std::shared_ptr<InputBuffer> InputBuffer::Create()
 {
     auto memory = Memory::Create(L"Sausage.exe");
@@ -19,11 +21,11 @@ std::shared_ptr<InputBuffer> InputBuffer::Create()
     size_t notFound = memory->ExecuteSigScans();
     if (notFound > 0) return nullptr;
 
-    size_t bufferSize = 0x100000;
-    __int64 buffer = memory->AllocateBuffer(bufferSize);
+    __int64 buffer = memory->AllocateBuffer(BUFFER_SIZE);
     inputBuffer->_buffer = buffer;
     inputBuffer->ResetPosition();
     inputBuffer->SetMode(Nothing);
+    inputBuffer->WriteData(std::vector<Direction>(BUFFER_SIZE - 9, None));
 
     memory->Intercept(firstLine, nextLine, {
         // direction is in sil (single byte, but the register is technically a long because C#)
@@ -36,7 +38,7 @@ std::shared_ptr<InputBuffer> InputBuffer::Create()
             0x48, 0xBB, LONG_TO_BYTES(buffer),                  // mov rbx, buffer
             0x48, 0x8B, 0x0B,                                   // mov rcx, [rbx]       ; rcx = current buffer size
             0x48, 0xFF, 0xC1,                                   // inc rcx              ; rcx = new buffer size
-            IF_LT(0x48, 0x81, 0xF9, INT_TO_BYTES(bufferSize)),  // cmp rcx, bufferSize  ; If this would not cause the buffer to overflow
+            IF_LT(0x48, 0x81, 0xF9, INT_TO_BYTES(BUFFER_SIZE)), // cmp rcx, bufferSize  ; If this would not cause the buffer to overflow
             THEN(                                               //
                                                                 //
                 IF_EQ(0x3C, Recording),                         // cmp al, 0            ; If we're in recording mode
@@ -59,7 +61,7 @@ std::shared_ptr<InputBuffer> InputBuffer::Create()
                 IF_EQ(0x3C, ForwardStep),                       // cmp al, 2            ; Single step (in playback mode)
                 THEN(                                           //
                     0x48, 0x89, 0x0B,                           // mov [rbx], rcx       ; Write the new buffer size
-                    0xC6, 0x43, 0x08, Nothing,                  // mov [rbx+8], 0x2     ; Change mode to nop
+                    0xC6, 0x43, 0x08, Recording,                // mov [rbx+8], 0x00    ; Change back to recording mode (so we can overwrite the buffer)
                     0x48, 0x01, 0xCB,                           // add rbx, rcx         ; rbx = first open buffer slot
                     0x40, 0x8A, 0x33                            // mov sil, [rbx]       ; Copy input from buffer to the game
                 )                                               //
@@ -78,6 +80,11 @@ void InputBuffer::SetMode(Mode mode)
     _memory->WriteData<byte>(_buffer + 8, {static_cast<byte>(mode)});
 }
 
+Mode InputBuffer::GetMode()
+{
+    return static_cast<Mode>(_memory->ReadData<byte>(_buffer + 8, 1)[0]);
+}
+
 void InputBuffer::ResetPosition()
 {
     SetPosition(0);
@@ -85,7 +92,7 @@ void InputBuffer::ResetPosition()
 
 __int64 InputBuffer::GetPosition()
 {
-    return _memory->ReadData<__int64>(_buffer, 1)[0];
+    return _memory->ReadData<__int64>(_buffer, 1)[0] - 8;
 }
 
 std::string InputBuffer::GetDisplayText()
@@ -98,12 +105,12 @@ std::string InputBuffer::GetDisplayText()
     std::string text;
     for (size_t i=offset; i<offset + 9 && i < data.size(); i++) {
         Direction dir = data[i];
-        if (dir == North) text += "North";
-        if (dir == South) text += "South";
-        if (dir == East)  text += "East";
-        if (dir == West)  text += "West";
-
-        if (i == position) text += " <---";
+        if (dir == North)       text += "North";
+        else if (dir == South)  text += "South";
+        else if (dir == East)   text += "East";
+        else if (dir == West)   text += "West";
+        else                    text += "  ";
+        if (i == position) text += "\t<---";
         text += '\n';
     }
     return text;
@@ -126,7 +133,10 @@ void InputBuffer::ReadFromFile(const std::string& filename)
 void InputBuffer::WriteToFile(const std::string& filename)
 {
     std::ofstream file(filename);
-    for (Direction dir : ReadData()) {
+    auto data = ReadData();
+    size_t bufferSize = GetPosition();
+    for (size_t i = 0; i<bufferSize; i++) {
+        Direction dir = data[i];
         if (dir == North) file << "North\n";
         if (dir == South) file << "South\n";
         if (dir == East)  file << "East\n";
@@ -137,13 +147,14 @@ void InputBuffer::WriteToFile(const std::string& filename)
 
 std::vector<Direction> InputBuffer::ReadData()
 {
-    // Read up to the playhead.
-    __int64 size = GetPosition();
-    std::vector<byte> rawData = _memory->ReadData<byte>(_buffer, size);
-    std::vector<Direction> out;
-    for (size_t i=9; i<rawData.size(); i++) {
-        out.push_back(static_cast<Direction>(rawData[i]));
-    }
+    // Read up to the buffer size.
+    const std::vector<byte> data = _memory->ReadData<byte>(_buffer + 9, BUFFER_SIZE - 9);
+    std::vector<Direction> out(data.size(), None);
+    const byte* dataBegin = &data[0];
+    Direction* outBegin = &out[0];
+
+    for (size_t i=0; i<data.size(); i++) *(outBegin + i) = static_cast<Direction>(*(dataBegin + i));
+
     return out;
 }
 

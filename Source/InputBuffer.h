@@ -35,6 +35,7 @@ public:
     static std::shared_ptr<InputBuffer> Create();
 
     void SetMode(Mode mode);
+    Mode GetMode();
 
     void ResetPosition();
     __int64 GetPosition();

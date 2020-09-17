@@ -16,10 +16,8 @@
 
 constexpr WORD SET_RECORD_MODE   = 0x401;
 constexpr WORD SET_PLAYBACK_MODE = 0x402;
-constexpr WORD SET_NOP_MODE      = 0x403;
 constexpr WORD READ_FROM_FILE    = 0x404;
 constexpr WORD WRITE_TO_FILE     = 0x405;
-constexpr WORD GET_BUFFER_SIZE   = 0x406;
 constexpr WORD ATTACH_MEMORY     = 0x407;
 constexpr WORD RESET_PLAYHEAD    = 0x408;
 constexpr WORD PLAY_ONE_FRAME    = 0x409;
@@ -29,8 +27,9 @@ constexpr WORD LAUNCH_GAME       = 0x40C;
 
 std::shared_ptr<InputBuffer> g_inputBuffer;
 HWND g_bufferSize;
-HWND g_currentState;
 HWND g_instructionDisplay;
+HWND g_recordButton;
+HWND g_playButton;
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
     switch (message) {
@@ -40,13 +39,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
                     g_inputBuffer = InputBuffer::Create();
                     if (!g_inputBuffer) break;
                     KillTimer(hwnd, ATTACH_MEMORY);
-                    SetWindowTextW(g_currentState, L"(Doing nothing)");
-                    break;
-                case GET_BUFFER_SIZE:
-                    if (g_inputBuffer) {
-                        std::wstring text = L"Recorded inputs: " + std::to_wstring(g_inputBuffer->GetPosition());
-                        SetWindowTextW(g_bufferSize, text.c_str());
-                    }
                     break;
                 case UPDATE_DISPLAY:
                     if (g_inputBuffer) {
@@ -72,29 +64,28 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             if (!g_inputBuffer) break;
             switch (LOWORD(wParam)) {
                 case SET_RECORD_MODE:
-                    g_inputBuffer->SetMode(Recording);
-                    SetTimer(hwnd, GET_BUFFER_SIZE, 1000, NULL); // Start watching the buffer
-                    SetWindowTextW(g_currentState, L"Recording inputs");
+                    if (g_inputBuffer->GetMode() == Recording) {
+                        g_inputBuffer->SetMode(Nothing);
+                        SetWindowTextW(g_recordButton, L"Start recording");
+                    } else {
+                        g_inputBuffer->SetMode(Recording);
+                        SetWindowTextW(g_recordButton, L"Stop recording");
+                    }
                     break;
                 case SET_PLAYBACK_MODE:
-                    g_inputBuffer->SetMode(Playing);
-                    KillTimer(hwnd, GET_BUFFER_SIZE);
-                    SetWindowTextW(g_currentState, L"Playing inputs");
+                    if (g_inputBuffer->GetMode() == Playing) {
+                        g_inputBuffer->SetMode(Recording);
+                        SetWindowTextW(g_playButton, L"Play");
+                    } else {
+                        g_inputBuffer->SetMode(Playing);
+                        SetWindowTextW(g_playButton, L"Pause");
+                    }
                     break;
                 case PLAY_ONE_FRAME:
                     g_inputBuffer->SetMode(ForwardStep);
-                    KillTimer(hwnd, GET_BUFFER_SIZE);
-                    SetWindowTextW(g_currentState, L"Stepped once");
                     break;
                 case BACK_ONE_FRAME:
                     g_inputBuffer->SetMode(BackStep);
-                    KillTimer(hwnd, GET_BUFFER_SIZE);
-                    SetWindowTextW(g_currentState, L"Stepped back once");
-                    break;
-                case SET_NOP_MODE:
-                    g_inputBuffer->SetMode(Nothing);
-                    KillTimer(hwnd, GET_BUFFER_SIZE);
-                    SetWindowTextW(g_currentState, L"(Doing nothing)");
                     break;
                 case RESET_PLAYHEAD:
                     g_inputBuffer->ResetPosition();
@@ -141,8 +132,7 @@ void CreateComponents(HWND hwnd) {
     int x = 10;
     int y = 10;
 
-    CreateButton(hwnd, x, y, 200, L"Start recording inputs", SET_RECORD_MODE);
-    CreateButton(hwnd, x, y, 200, L"Stop doing anything", SET_NOP_MODE);
+    g_recordButton = CreateButton(hwnd, x, y, 200, L"Start recording", SET_RECORD_MODE);
     CreateButton(hwnd, x, y, 200, L"Reset the playhead", RESET_PLAYHEAD);
     CreateButton(hwnd, x, y, 200, L"Launch game", LAUNCH_GAME);
 
@@ -158,14 +148,14 @@ void CreateComponents(HWND hwnd) {
 
     CreateButton(hwnd, x, y, 40, L"<", BACK_ONE_FRAME);
     y -= 30;
-    CreateButton(hwnd, x + 40, y, 70, L"Play", SET_PLAYBACK_MODE);
+    g_playButton = CreateButton(hwnd, x + 40, y, 70, L"Play", SET_PLAYBACK_MODE);
     y -= 30;
     CreateButton(hwnd, x + 110, y, 40, L">", PLAY_ONE_FRAME);
 
-    g_instructionDisplay = CreateLabel(hwnd, x, y, 100, 300);
+    g_instructionDisplay = CreateLabel(hwnd, x, y, 100, 400);
     SetTimer(hwnd, UPDATE_DISPLAY, 100, NULL);
 
-    y += 300;
+    y += 400;
     g_bufferSize = CreateLabel(hwnd, x, y, 200, 16, L"Recorded inputs: 0");
 
 }
