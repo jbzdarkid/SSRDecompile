@@ -154,17 +154,13 @@ std::string Memory::ReadString(std::vector<__int64> offsets) {
 }
 
 void Memory::Intercept(__int64 firstLine, __int64 nextLine, const std::vector<byte>& data) {
-    // We need enough space for the jump in the source code
-    assert(nextLine - firstLine >= 14);
-
-    assert(false); // Change rax -> r11 so I can peek at the retval
     std::vector<byte> jumpBack = {
-        0x50,                                       // push rax
-        0x48, 0xB8, LONG_TO_BYTES(firstLine + 13),  // mov rax, firstLine + 13
-        0xFF, 0xE0,                                 // jmp rax
+        0x41, 0x53,                                 // push r11
+        0x49, 0xBB, LONG_TO_BYTES(firstLine + 15),  // mov r11, firstLine + 15
+        0x41, 0xFF, 0xE3,                           // jmp r11
     };
 
-    std::vector<byte> injectionBytes = {0x58}; // pop rax (before executing code that might need it)
+    std::vector<byte> injectionBytes = {0x41, 0x5B}; // pop r11 (before executing code that might need it)
     injectionBytes.insert(injectionBytes.end(), data.begin(), data.end());
     injectionBytes.push_back(0x90); // Padding nop
     std::vector<byte> replacedCode = ReadData<byte>({firstLine}, nextLine - firstLine);
@@ -178,11 +174,14 @@ void Memory::Intercept(__int64 firstLine, __int64 nextLine, const std::vector<by
     WriteDataInternal(addr, &injectionBytes[0], injectionBytes.size());
 
     std::vector<byte> jumpAway = {
-        0x50,                            // push rax
-        0x48, 0xB8, LONG_TO_BYTES(addr), // mov rax, addr
-        0xFF, 0xE0,                      // jmp rax
-        0x58,                            // pop rax (we return to this opcode)
+        0x41, 0x53,                         // push r11
+        0x49, 0xBB, LONG_TO_BYTES(addr),    // mov r11, addr
+        0x41, 0xFF, 0xE3,                   // jmp r11
+        0x41, 0x5B,                         // pop r11 (we return to this opcode)
     };
+    // We need enough space for the jump in the source code
+    assert(static_cast<int>(nextLine - firstLine) >= jumpAway.size());
+
     // Fill any leftover space with nops
     for (size_t i=jumpAway.size(); i<static_cast<size_t>(nextLine - firstLine); i++) jumpAway.push_back(0x90);
     WriteData<byte>({firstLine}, jumpAway);

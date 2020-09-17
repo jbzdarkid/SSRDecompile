@@ -8,9 +8,6 @@
 #include "Memory.h"
 #include "InputBuffer.h"
 
-// Support undo during playback
-// Support undo during recording
-
 constexpr WORD SET_RECORD_MODE   = 0x401;
 constexpr WORD SET_PLAYBACK_MODE = 0x402;
 constexpr WORD READ_FROM_FILE    = 0x403;
