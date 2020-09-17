@@ -16,14 +16,14 @@
 
 constexpr WORD SET_RECORD_MODE   = 0x401;
 constexpr WORD SET_PLAYBACK_MODE = 0x402;
-constexpr WORD READ_FROM_FILE    = 0x404;
-constexpr WORD WRITE_TO_FILE     = 0x405;
-constexpr WORD ATTACH_MEMORY     = 0x407;
-constexpr WORD RESET_PLAYHEAD    = 0x408;
-constexpr WORD PLAY_ONE_FRAME    = 0x409;
-constexpr WORD BACK_ONE_FRAME    = 0x40A;
-constexpr WORD UPDATE_DISPLAY    = 0x40B;
-constexpr WORD LAUNCH_GAME       = 0x40C;
+constexpr WORD READ_FROM_FILE    = 0x403;
+constexpr WORD WRITE_TO_FILE     = 0x404;
+constexpr WORD ATTACH_MEMORY     = 0x405;
+constexpr WORD RESET_PLAYHEAD    = 0x406;
+constexpr WORD PLAY_ONE_FRAME    = 0x407;
+constexpr WORD BACK_ONE_FRAME    = 0x408;
+constexpr WORD UPDATE_DISPLAY    = 0x409;
+constexpr WORD LAUNCH_GAME       = 0x40A;
 
 std::shared_ptr<InputBuffer> g_inputBuffer;
 HWND g_bufferSize;
