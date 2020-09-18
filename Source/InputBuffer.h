@@ -9,6 +9,7 @@ enum Mode : byte {
     BackStep = 0x10,
 
     Nothing = 0x50,
+    UndoEnd = 0x51,
 };
 
 // From Direction.cs
@@ -24,9 +25,6 @@ enum Direction : byte {
     None,
     Down,
     Up,
-
-// My additions
-    Undo,
 };
 
 class InputBuffer final
@@ -42,6 +40,8 @@ public:
 
     std::string GetDisplayText();
 
+    void SetPlayerPosition(const std::vector<int>& position);
+
     void ReadFromFile(const std::wstring& filename);
     void WriteToFile(const std::wstring& filename);
 
@@ -51,6 +51,7 @@ private:
     std::vector<Direction> ReadData();
     void SetPosition(__int64 position);
     void WriteData(const std::vector<Direction>& data);
+    void Wipe();
 
     std::shared_ptr<Memory> _memory;
 

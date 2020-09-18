@@ -18,6 +18,8 @@ constexpr WORD PLAY_ONE_FRAME    = 0x407;
 constexpr WORD BACK_ONE_FRAME    = 0x408;
 constexpr WORD UPDATE_DISPLAY    = 0x409;
 constexpr WORD LAUNCH_GAME       = 0x40A;
+constexpr WORD GOTO_NEXT_DEMO    = 0x40B;
+constexpr WORD GOTO_PREV_DEMO    = 0x40C;
 
 std::shared_ptr<Memory> g_memory;
 std::shared_ptr<InputBuffer> g_inputBuffer;
@@ -26,6 +28,26 @@ HWND g_instructionDisplay;
 HWND g_recordButton;
 HWND g_playButton;
 HWND g_demoName;
+
+std::vector<std::wstring> demoNames = {
+    L"1-1.dem",
+    L"1-2.dem",
+    L"1-3.dem",
+    L"1-4.dem",
+    L"1-5.dem",
+    L"1-6.dem",
+    L"1-7.dem",
+    L"1-8.dem",
+    L"1-9.dem",
+    L"1-10.dem",
+    L"1-11.dem",
+    L"1-12.dem",
+    L"1-13.dem",
+    L"1-14.dem",
+    L"1-15.dem",
+    L"1-16.dem",
+    L"1-final.dem",
+};
 
 std::wstring GetWindowString(HWND hwnd) {
     SetLastError(0); // GetWindowTextLength does not clear LastError.
@@ -36,22 +58,13 @@ std::wstring GetWindowString(HWND hwnd) {
     return text;
 }
 
-std::vector<int> GetPosition() {
-    if (!g_memory) return {0, 0, 0};
-    return g_memory->ReadData<int>({0x1547668, 0x58, 0x98, 0x40, 0x18, 0x100, 0xD8}, 3);
-}
-
-void SetPosition(const std::vector<int>& position) {
-    if (!g_memory) return;
-    g_memory->WriteData<int>({0x1547668, 0x58, 0x98, 0x40, 0x18, 0x100, 0xD8}, position);
-}
-
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
     switch (message) {
         case WM_TIMER:
             switch (wParam) {
                 case ATTACH_MEMORY:
-                    g_inputBuffer = InputBuffer::Create();
+                    g_memory = Memory::Create(L"Sausage.exe");
+                    g_inputBuffer = InputBuffer::Create(g_memory);
                     if (!g_inputBuffer) break;
                     KillTimer(hwnd, ATTACH_MEMORY);
                     break;
@@ -111,6 +124,24 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
                 case WRITE_TO_FILE:
                     g_inputBuffer->WriteToFile(GetWindowString(g_demoName));
                     break;
+                case GOTO_NEXT_DEMO:
+                    for (size_t i=0; i<demoNames.size() - 1; i++) {
+                        if (demoNames[i] == GetWindowString(g_demoName)) {
+                            SetWindowTextW(g_demoName, demoNames[i+1].c_str());
+                            g_inputBuffer->ReadFromFile(demoNames[i+1]);
+                            break;
+                        }
+                    }
+                    break;
+                case GOTO_PREV_DEMO:
+                    for (size_t i=1; i<demoNames.size(); i++) {
+                        if (demoNames[i] == GetWindowString(g_demoName)) {
+                            SetWindowTextW(g_demoName, demoNames[i-1].c_str());
+                            g_inputBuffer->ReadFromFile(demoNames[i-1]);
+                            break;
+                        }
+                    }
+                    break;
             }
             break;
     }
@@ -159,9 +190,9 @@ void CreateComponents(HWND hwnd) {
     y -= 30;
     CreateButton(hwnd, x + 80, y, 70, L"Save", WRITE_TO_FILE);
 
-    g_demoName = CreateText(hwnd, x, y, 150, L"all.dem");
+    g_demoName = CreateText(hwnd, x, y, 150, L"1-1.dem");
 
-    CreateButton(hwnd, x, y, 20, L"<<", NULL);
+    CreateButton(hwnd, x, y, 20, L"<<", GOTO_PREV_DEMO);
     y -= 30;
     CreateButton(hwnd, x + 20, y, 20, L"<", BACK_ONE_FRAME);
     y -= 30;
@@ -169,7 +200,7 @@ void CreateComponents(HWND hwnd) {
     y -= 30;
     CreateButton(hwnd, x + 110, y, 20, L">", PLAY_ONE_FRAME);
     y -= 30;
-    CreateButton(hwnd, x + 130, y, 20, L">>", NULL);
+    CreateButton(hwnd, x + 130, y, 20, L">>", GOTO_NEXT_DEMO);
 
     g_instructionDisplay = CreateLabel(hwnd, x, y, 150, 400);
     SetTimer(hwnd, UPDATE_DISPLAY, 100, NULL);

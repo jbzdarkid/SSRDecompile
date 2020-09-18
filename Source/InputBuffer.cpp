@@ -31,9 +31,7 @@ std::shared_ptr<InputBuffer> InputBuffer::Create(const std::shared_ptr<Memory>& 
 
     __int64 buffer = memory->AllocateBuffer(BUFFER_SIZE);
     inputBuffer->_buffer = buffer;
-    inputBuffer->ResetPosition();
-    inputBuffer->SetMode(Nothing);
-    inputBuffer->WriteData(std::vector<Direction>(BUFFER_SIZE - 9, None));
+    inputBuffer->Wipe();
 
     memory->Intercept(playerInputString, playerInputString + 17, {
         // direction is in sil (single byte, but the register is technically a long because C#)
@@ -98,10 +96,18 @@ std::shared_ptr<InputBuffer> InputBuffer::Create(const std::shared_ptr<Memory>& 
                 THEN(                                           //
                     0x48, 0x8B, 0x0B,                           // mov rcx, [rbx]       ; rcx = current playhead
                     0x48, 0xFF, 0xC9,                           // dec rcx
+                    0xC6, 0x43, 0x08, UndoEnd,                  // mov [rbx+8], 0x51    ; Change mode to "waiting for end of undo"
                     IF_GE(0x48, 0x83, 0xF9, 0x08),              // cmp rcx, 8           ; Ensure that we don't bring the playhead too far back
                     THEN(0x48, 0x89, 0x0B)                      // mov [rbx], rcx       ; Write new playhead
                 )                                               //
             ),                                                  //
+                                                                //
+            IF_EQ(0x40, 0x80, 0xFF, UndoEnd),                   // cmp dil, 0           ; If we're waiting for the end of an undo
+            THEN(                                               //
+                IF_EQ(0x3C, 0x00),                              // cmp al, 0x01         ; If undo is not pressed
+                THEN(0xC6, 0x43, 0x08, Recording)               // mov [rbx+8], 0x00    ; Change mode back to recording
+            ),                                                  //
+                                                                //
             IF_EQ(0x40, 0x80, 0xFF, Playing),                   // cmp dil, 1           ; If we're in playback mode
             THEN(0x30, 0xC0),                                   // xor al, al           ; Swallow the undo press
                                                                 //
@@ -164,10 +170,10 @@ std::string InputBuffer::GetDisplayText()
     __int64 position = GetPosition();
     std::vector<Direction> data = ReadData();
 
-    size_t offset = (position > 4 ? position - 4 : 0);
+    size_t offset = (position > 5 ? position - 5 : 0);
     
     std::string text;
-    for (size_t i=offset; i<offset + 9 && i < data.size(); i++) {
+    for (size_t i=offset; i<offset + 11 && i < data.size(); i++) {
         Direction dir = data[i];
         if (dir == North)       text += "North";
         else if (dir == South)  text += "South";
@@ -180,23 +186,57 @@ std::string InputBuffer::GetDisplayText()
     return text;
 }
 
-void InputBuffer::ReadFromFile(const std::wstring& filename)
-{
+// std::vector<int> GetPlayerPosition() {
+//     if (!g_memory) return {0, 0, 0};
+//     return g_memory->ReadData<int>({0x1547668, 0x58, 0x98, 0x40, 0x18, 0x100, 0xD8}, 3);
+// }
+
+void InputBuffer::SetPlayerPosition(const std::vector<int>& position) {
+    if (!_memory) return;
+    // UnityPlayer.dll
+    _memory->WriteData<int>({0x6197A0000 + 0x1547668, 0x58, 0x98, 0x40, 0x18, 0x100, 0xD8}, position);
+}
+
+void InputBuffer::ReadFromFile(const std::wstring& filename) {
     std::vector<Direction> buffer;
     std::ifstream file(filename);
-    for (std::string dir; std::getline(file, dir);) {
-        if (dir == "North") buffer.push_back(North);
-        if (dir == "South") buffer.push_back(South);
-        if (dir == "East")  buffer.push_back(East);
-        if (dir == "West")  buffer.push_back(West);
-        if (dir == "None")  buffer.push_back(None); // Allow "None" in demo files, in case we need to buffer something, at some point.
+    std::string line;
+    std::getline(file, line);
+    int x = std::stoi(line);
+    std::getline(file, line);
+    int y = std::stoi(line);
+    std::getline(file, line);
+    int z = std::stoi(line);
+    // SetPlayerPosition({x, y, z});
+
+    while (std::getline(file, line)) {
+        if (line == "North") buffer.push_back(North);
+        if (line == "South") buffer.push_back(South);
+        if (line == "East")  buffer.push_back(East);
+        if (line == "West")  buffer.push_back(West);
+        if (line == "None")  buffer.push_back(None); // Allow "None" in demo files, in case we need to buffer something, at some point.
     }
+    Wipe();
     WriteData(buffer);
 }
 
-void InputBuffer::WriteToFile(const std::wstring& filename)
-{
+void InputBuffer::WriteToFile(const std::wstring& filename) {
+    std::vector<std::string> positionLines;
+    std::ifstream inFile(filename);
+
+    if (inFile.is_open()) {
+        std::string line;
+        std::getline(inFile, line);
+        positionLines.push_back(line);
+        std::getline(inFile, line);
+        positionLines.push_back(line);
+        std::getline(inFile, line);
+        positionLines.push_back(line);
+        inFile.close();
+    }
+
     std::ofstream file(filename);
+    for (const auto& line : positionLines) file << line << '\n';
     auto data = ReadData();
     size_t bufferSize = GetPosition();
     for (size_t i = 0; i<bufferSize; i++) {
@@ -231,5 +271,12 @@ void InputBuffer::WriteData(const std::vector<Direction>& data)
 {
     ResetPosition();
     _memory->WriteData<Direction>(_buffer + 9, data);
+}
+
+void InputBuffer::Wipe()
+{
+    ResetPosition();
+    SetMode(Nothing);
+    WriteData(std::vector<Direction>(BUFFER_SIZE - 9, None));
 }
 

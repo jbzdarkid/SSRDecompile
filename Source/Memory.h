@@ -67,10 +67,6 @@ public:
         return data;
     }
     template<typename T>
-    inline std::vector<T> ReadData(const std::wstring& module, const std::vector<__int64>& offsets, size_t numItems) {
-        return ReadData<T>(ComputeOffset(module, offsets), numItems);
-    }
-    template<typename T>
     inline std::vector<T> ReadData(const std::vector<__int64>& offsets, size_t numItems) {
         return ReadData<T>(ComputeOffset(offsets), numItems);
     }
@@ -79,10 +75,6 @@ public:
     template <typename T>
     inline void WriteData(__int64 address, const std::vector<T>& data) {
         WriteDataInternal(address, data.data(), sizeof(T) * data.size());
-    }
-    template<typename T>
-    inline void WriteData(const std::wstring& module, const std::vector<__int64>& offsets, const std::vector<T>& data) {
-        WriteData<T>(ComputeOffset(module, offsets), data);
     }
     template <typename T>
     inline void WriteData(const std::vector<__int64>& offsets, const std::vector<T>& data) {
@@ -98,8 +90,6 @@ private:
     void ReadDataInternal(uintptr_t addr, void* buffer, size_t bufferSize);
     void WriteDataInternal(uintptr_t addr, const void* buffer, size_t bufferSize);
     uintptr_t ComputeOffset(std::vector<__int64> offsets);
-    uintptr_t ComputeOffset(const std::wstring& moduleName, std::vector<__int64> offsets);
-    uintptr_t ComputeOffset(__int64 baseAddress, std::vector<__int64> offsets);
 
     // Parts of the constructor / StartHeartbeat
     std::wstring _processName;
