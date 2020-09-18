@@ -32,7 +32,7 @@ enum Direction : byte {
 class InputBuffer final
 {
 public:
-    static std::shared_ptr<InputBuffer> Create();
+    static std::shared_ptr<InputBuffer> Create(const std::shared_ptr<Memory>& memory);
 
     void SetMode(Mode mode);
     Mode GetMode();
@@ -42,8 +42,8 @@ public:
 
     std::string GetDisplayText();
 
-    void ReadFromFile(const std::string& filename);
-    void WriteToFile(const std::string& filename);
+    void ReadFromFile(const std::wstring& filename);
+    void WriteToFile(const std::wstring& filename);
 
 private:
     InputBuffer() = default;

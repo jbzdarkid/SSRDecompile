@@ -19,11 +19,32 @@ constexpr WORD BACK_ONE_FRAME    = 0x408;
 constexpr WORD UPDATE_DISPLAY    = 0x409;
 constexpr WORD LAUNCH_GAME       = 0x40A;
 
+std::shared_ptr<Memory> g_memory;
 std::shared_ptr<InputBuffer> g_inputBuffer;
 HWND g_bufferSize;
 HWND g_instructionDisplay;
 HWND g_recordButton;
 HWND g_playButton;
+HWND g_demoName;
+
+std::wstring GetWindowString(HWND hwnd) {
+    SetLastError(0); // GetWindowTextLength does not clear LastError.
+    int length = GetWindowTextLengthW(hwnd);
+    std::wstring text(length, L'\0');
+    length = GetWindowTextW(hwnd, text.data(), static_cast<int>(text.size() + 1)); // Length includes the null terminator
+    text.resize(length);
+    return text;
+}
+
+std::vector<int> GetPosition() {
+    if (!g_memory) return {0, 0, 0};
+    return g_memory->ReadData<int>({0x1547668, 0x58, 0x98, 0x40, 0x18, 0x100, 0xD8}, 3);
+}
+
+void SetPosition(const std::vector<int>& position) {
+    if (!g_memory) return;
+    g_memory->WriteData<int>({0x1547668, 0x58, 0x98, 0x40, 0x18, 0x100, 0xD8}, position);
+}
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
     switch (message) {
@@ -85,10 +106,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
                     g_inputBuffer->ResetPosition();
                     break;
                 case READ_FROM_FILE:
-                    g_inputBuffer->ReadFromFile("test.dem");
+                    g_inputBuffer->ReadFromFile(GetWindowString(g_demoName));
                     break;
                 case WRITE_TO_FILE:
-                    g_inputBuffer->WriteToFile("test.dem");
+                    g_inputBuffer->WriteToFile(GetWindowString(g_demoName));
                     break;
             }
             break;
@@ -138,13 +159,19 @@ void CreateComponents(HWND hwnd) {
     y -= 30;
     CreateButton(hwnd, x + 80, y, 70, L"Save", WRITE_TO_FILE);
 
-    CreateButton(hwnd, x, y, 40, L"<", BACK_ONE_FRAME);
+    g_demoName = CreateText(hwnd, x, y, 150, L"all.dem");
+
+    CreateButton(hwnd, x, y, 20, L"<<", NULL);
+    y -= 30;
+    CreateButton(hwnd, x + 20, y, 20, L"<", BACK_ONE_FRAME);
     y -= 30;
     g_playButton = CreateButton(hwnd, x + 40, y, 70, L"Play", SET_PLAYBACK_MODE);
     y -= 30;
-    CreateButton(hwnd, x + 110, y, 40, L">", PLAY_ONE_FRAME);
+    CreateButton(hwnd, x + 110, y, 20, L">", PLAY_ONE_FRAME);
+    y -= 30;
+    CreateButton(hwnd, x + 130, y, 20, L">>", NULL);
 
-    g_instructionDisplay = CreateLabel(hwnd, x, y, 100, 400);
+    g_instructionDisplay = CreateLabel(hwnd, x, y, 150, 400);
     SetTimer(hwnd, UPDATE_DISPLAY, 100, NULL);
 
     y += 400;

@@ -228,6 +228,15 @@ void Memory::WriteDataInternal(uintptr_t addr, const void* buffer, size_t buffer
 }
 
 uintptr_t Memory::ComputeOffset(std::vector<__int64> offsets) {
+    return Memory::ComputeOffset(_baseAddress, std::move(offsets));
+}
+
+uintptr_t Memory::ComputeOffset(const std::wstring& moduleName, std::vector<__int64> offsets) {
+    // TODO: Compute base addr from module name
+    return Memory::ComputeOffset(0x00, std::move(offsets));
+}
+
+uintptr_t Memory::ComputeOffset(__int64 baseAddress, std::vector<__int64> offsets) {
     assert(offsets.size() > 0);
     assert(offsets.front() != 0);
 
@@ -235,7 +244,7 @@ uintptr_t Memory::ComputeOffset(std::vector<__int64> offsets) {
     const __int64 final_offset = offsets.back();
     offsets.pop_back();
 
-    uintptr_t cumulativeAddress = _baseAddress;
+    uintptr_t cumulativeAddress = baseAddress;
     for (const __int64 offset : offsets) {
         cumulativeAddress += offset;
 

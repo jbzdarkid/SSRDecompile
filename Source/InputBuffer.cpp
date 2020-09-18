@@ -3,9 +3,8 @@
 
 const size_t BUFFER_SIZE = 0x100000;
 
-std::shared_ptr<InputBuffer> InputBuffer::Create()
+std::shared_ptr<InputBuffer> InputBuffer::Create(const std::shared_ptr<Memory>& memory)
 {
-    auto memory = Memory::Create(L"Sausage.exe");
     if (!memory) return nullptr;
 
     auto inputBuffer = std::shared_ptr<InputBuffer>(new InputBuffer());
@@ -175,13 +174,13 @@ std::string InputBuffer::GetDisplayText()
         else if (dir == East)   text += "East";
         else if (dir == West)   text += "West";
         else                    text += "  ";
-        if (i == position) text += "\t<--- Next input";
+        if (i == position) text += "\t<--- (Next)";
         text += '\n';
     }
     return text;
 }
 
-void InputBuffer::ReadFromFile(const std::string& filename)
+void InputBuffer::ReadFromFile(const std::wstring& filename)
 {
     std::vector<Direction> buffer;
     std::ifstream file(filename);
@@ -195,7 +194,7 @@ void InputBuffer::ReadFromFile(const std::string& filename)
     WriteData(buffer);
 }
 
-void InputBuffer::WriteToFile(const std::string& filename)
+void InputBuffer::WriteToFile(const std::wstring& filename)
 {
     std::ofstream file(filename);
     auto data = ReadData();
