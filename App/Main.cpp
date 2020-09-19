@@ -8,7 +8,6 @@
 #include "Memory.h"
 #include "InputBuffer.h"
 
-constexpr WORD SET_RECORD_MODE   = 0x401;
 constexpr WORD SET_PLAYBACK_MODE = 0x402;
 constexpr WORD READ_FROM_FILE    = 0x403;
 constexpr WORD WRITE_TO_FILE     = 0x404;
@@ -23,30 +22,110 @@ constexpr WORD GOTO_PREV_DEMO    = 0x40C;
 
 std::shared_ptr<Memory> g_memory;
 std::shared_ptr<InputBuffer> g_inputBuffer;
-HWND g_bufferSize;
 HWND g_instructionDisplay;
-HWND g_recordButton;
 HWND g_playButton;
 HWND g_demoName;
+HWND g_levelName;
 
-std::vector<std::wstring> demoNames = {
-    L"1-1.dem",
-    L"1-2.dem",
-    L"1-3.dem",
-    L"1-4.dem",
-    L"1-5.dem",
-    L"1-6.dem",
-    L"1-7.dem",
-    L"1-8.dem",
-    L"1-9.dem",
-    L"1-10.dem",
-    L"1-11.dem",
-    L"1-12.dem",
-    L"1-13.dem",
-    L"1-14.dem",
-    L"1-15.dem",
-    L"1-16.dem",
-    L"1-final.dem",
+std::vector<std::tuple<std::wstring, int, int, int, std::wstring>> demoNames = {
+    {L"1-0.dem",      -4,  -1, -1, L"Overworld Start"},
+    {L"1-1.dem",       4,  -2, -1, L"Lachrymose Head"},
+    {L"1-2.dem",       1,  -2, -1, L"Southjaunt"},
+    {L"1-3.dem",       1,  -3, -1, L"Infant's Break"},
+    {L"1-4.dem",       2,  -9, -1, L"Comely Hearth"},
+    {L"1-5.dem",       2, -11, -1, L"Little Fire"},
+    {L"1-6.dem",       6, -12, -1, L"Eastreach"},
+    {L"1-7.dem",       1, -16, -1, L"Bay's Neck"},
+    {L"1-8.dem",       2, -17, -1, L"Burning Wharf"},
+    {L"1-9.dem",      -5, -10, -1, L"Happy Pool"},
+    {L"1-10.dem",     -7,  -9, -1, L"Maiden's Walk"},
+    {L"1-11.dem",     -8,  -5, -1, L"Fiery Jut"},
+    {L"1-12.dem",    -14,  -9, -1, L"Merchant's Elegy"},
+    {L"1-13.dem",    -15,  -9, -1, L"Seafinger"},
+    {L"1-14.dem",    -16, -15, -1, L"The Clover"},
+    {L"1-15.dem",     -9, -14, -1, L"Inlet Shore"},
+    {L"1-16.dem",    -10, -20, -1, L"The Anchorage"},
+    {L"1-final.dem", -10, -20, -1, L"Overworld Sausage 1"},
+
+    {L"2-1.dem",     -10, -20, -1, L"Emerson Jetty"},
+    {L"2-2.dem",       0,   0,  0, L"Sad Farm"},
+    {L"2-3.dem",       0,   0,  0, L"Cove"},
+    {L"2-4.dem",       0,   0,  0, L"The Great Tower"},
+    {L"2-5.dem",       0,   0,  0, L"The Paddock"},
+    {L"2-6.dem",       0,   0,  0, L"Beautiful Horizon"},
+    {L"2-7.dem",       0,   0,  0, L"Barrow Set"},
+    {L"2-8.dem",       0,   0,  0, L"Rough Field"},
+    {L"2-9.dem",       0,   0,  0, L"Fallow Earth"},
+    {L"2-10.dem",      0,   0,  0, L"Twisty Farm"},
+    {L"2-final.dem", -10, -20, -1, L"Overworld Sausage 2"},
+
+    {L"3-1.dem",       0,   0,  0, L"Cold Jag"},
+    {L"3-2.dem",       0,   0,  0, L"Cold Finger"},
+    {L"3-3.dem",       0,   0,  0, L"Cold Escarpment"},
+    {L"3-4.dem",       0,   0,  0, L"Cold Frustration"},
+    {L"3-5.dem",       0,   0,  0, L"Cold Trail"},
+    {L"3-6.dem",       0,   0,  0, L"Cold Pit"},
+    {L"3-7.dem",       0,   0,  0, L"Cold Cliff"},
+    {L"3-8.dem",       0,   0,  0, L"Cold Plateau"},
+    {L"3-9.dem",       0,   0,  0, L"Cold Head"},
+    {L"3-10.dem",      0,   0,  0, L"Cold Ladder"},
+    {L"3-11.dem",      0,   0,  0, L"Cold Sausage"},
+    {L"3-12.dem",      0,   0,  0, L"Cold Terrace"},
+    {L"3-13.dem",      0,   0,  0, L"Cold Horizon"},
+    {L"3-14.dem",      0,   0,  0, L"Cold Gate"},
+    {L"3-final.dem", -10, -20, -1, L"Overworld Sausage 3"},
+
+    {L"4-1.dem",       0,   0,  0, L"Toad's Folly"},
+    {L"4-2.dem",       0,   0,  0, L"Wretch's Retreat"},
+    {L"4-3.dem",       0,   0,  0, L"Sludge Coast"},
+    {L"4-4.dem",       0,   0,  0, L"Crunchy Leaves"},
+    {L"4-5.dem",       0,   0,  0, L"Gator Paddock"},
+    {L"4-6.dem",       0,   0,  0, L"Foul Fen"},
+    {L"4-final.dem", -10, -20, -1, L"Overworld Sausage 4"},
+
+    {L"5-1.dem",       0,   0,  0, L"The Gorge"},
+    {L"5-2.dem",       0,   0,  0, L"Widow's Finger"},
+    {L"5-3.dem",       0,   0,  0, L"Skeleton"},
+    {L"5-4.dem",       0,   0,  0, L"Open Baths"},
+    {L"5-5.dem",       0,   0,  0, L"Slope View"},
+    {L"5-6.dem",       0,   0,  0, L"Land's End"},
+    {L"5-7.dem",       0,   0,  0, L"Crater"},
+    {L"5-8.dem",       0,   0,  0, L"Pressure Points"},
+    {L"5-9.dem",       0,   0,  0, L"Drumlin"},
+    {L"5-10.dem",      0,   0,  0, L"Tarry Ridge"},
+    {L"5-11.dem",      0,   0,  0, L"Rough View"},
+    {L"5-12.dem",      0,   0,  0, L"Baby Rock"},
+
+    {L"6-1.dem",       0,   0,  0, L"Dead End"},
+    {L"6-2.dem",       0,   0,  0, L"Sea Dragon"},
+    {L"6-3.dem",       0,   0,  0, L"Folklore"},
+    {L"6-4.dem",       0,   0,  0, L"The Decay"},
+    {L"6-5.dem",       0,   0,  0, L"The Splitting Bough"},
+    {L"6-6.dem",       0,   0,  0, L"Captive Hydra"},
+    {L"6-7.dem",       0,   0,  0, L"Rattlesnakes"},
+    {L"6-8.dem",       0,   0,  0, L"Sty"},
+    {L"6-9.dem",       0,   0,  0, L"Split Face"},
+    {L"6-10.dem",      0,   0,  0, L"Four-faced Liar"},
+    {L"6-11.dem",      0,   0,  0, L"Suspension Bridge"},
+    {L"6-12.dem",      0,   0,  0, L"Curious Dragons"},
+    {L"6-13.dem",      0,   0,  0, L"Ancient Dam"},
+    {L"6-14.dem",      0,   0,  0, L"Apex"},
+
+    {L"7-1.dem",       0,   0,  0, L"The Stone Tree"},
+    {L"7-2.dem",       0,   0,  0, L"The Backbone"},
+    {L"7-3.dem",       0,   0,  0, L"Baby Swan"},
+    {L"7-4.dem",       0,   0,  0, L"Shy Dragon"},
+    {L"7-5.dem",       0,   0,  0, L"Lovers' Sadness"},
+    {L"7-6.dem",       0,   0,  0, L"Dragonclaw"},
+    {L"7-7.dem",       0,   0,  0, L"Obscene Gesture"},
+    {L"7-8.dem",       0,   0,  0, L"The Nursery"},
+    {L"7-9.dem",       0,   0,  0, L"Canal"},
+    {L"7-10.dem",      0,   0,  0, L"Mommy Swan"},
+    {L"7-11.dem",      0,   0,  0, L"Loft of the Spirit"},
+    {L"7-12.dem",      0,   0,  0, L"Wobblecliff"},
+    {L"7-13.dem",      0,   0,  0, L"Plateau Ferry"},
+    {L"7-14.dem",      0,   0,  0, L"God Pillar"},
+    {L"7-final.dem",   0,   0,  0, L"Final cleanup"},
 };
 
 std::wstring GetWindowString(HWND hwnd) {
@@ -56,6 +135,29 @@ std::wstring GetWindowString(HWND hwnd) {
     length = GetWindowTextW(hwnd, text.data(), static_cast<int>(text.size() + 1)); // Length includes the null terminator
     text.resize(length);
     return text;
+}
+
+void LoadRelativeDemo(int offset) {
+    std::wstring expectedName = GetWindowString(g_demoName);
+    for (size_t i=0; i<demoNames.size(); i++) {
+        const std::wstring& name = std::get<0>(demoNames[i]);
+        if (name == expectedName) {
+            if (i + offset < 0) break;
+            if (i + offset >= demoNames.size()) break;
+            const auto& [newName, x, y, z, levelName] = demoNames[i + offset];
+            SetWindowTextW(g_demoName, newName.c_str());
+            SetWindowTextW(g_levelName, levelName.c_str());
+            SetWindowTextW(g_playButton, L"Play");
+            g_inputBuffer->SetPlayerPosition({x, y, z});
+            g_inputBuffer->ReadFromFile(newName);
+            return;
+        }
+    }
+
+    // Not a known demo, just load it (don't move the player)
+    if (offset == 0) {
+        g_inputBuffer->ReadFromFile(expectedName);
+    }
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
@@ -91,15 +193,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
             if (!g_inputBuffer) break;
             switch (LOWORD(wParam)) {
-                case SET_RECORD_MODE:
-                    if (g_inputBuffer->GetMode() == Recording) {
-                        g_inputBuffer->SetMode(Nothing);
-                        SetWindowTextW(g_recordButton, L"Start recording");
-                    } else {
-                        g_inputBuffer->SetMode(Recording);
-                        SetWindowTextW(g_recordButton, L"Stop recording");
-                    }
-                    break;
                 case SET_PLAYBACK_MODE:
                     if (g_inputBuffer->GetMode() == Playing) {
                         g_inputBuffer->SetMode(Recording);
@@ -118,29 +211,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
                 case RESET_PLAYHEAD:
                     g_inputBuffer->ResetPosition();
                     break;
+                case GOTO_PREV_DEMO:
+                    LoadRelativeDemo(-1);
+                    break;
                 case READ_FROM_FILE:
-                    g_inputBuffer->ReadFromFile(GetWindowString(g_demoName));
+                    LoadRelativeDemo(0);
+                    break;
+                case GOTO_NEXT_DEMO:
+                    LoadRelativeDemo(+1);
                     break;
                 case WRITE_TO_FILE:
                     g_inputBuffer->WriteToFile(GetWindowString(g_demoName));
-                    break;
-                case GOTO_NEXT_DEMO:
-                    for (size_t i=0; i<demoNames.size() - 1; i++) {
-                        if (demoNames[i] == GetWindowString(g_demoName)) {
-                            SetWindowTextW(g_demoName, demoNames[i+1].c_str());
-                            g_inputBuffer->ReadFromFile(demoNames[i+1]);
-                            break;
-                        }
-                    }
-                    break;
-                case GOTO_PREV_DEMO:
-                    for (size_t i=1; i<demoNames.size(); i++) {
-                        if (demoNames[i] == GetWindowString(g_demoName)) {
-                            SetWindowTextW(g_demoName, demoNames[i-1].c_str());
-                            g_inputBuffer->ReadFromFile(demoNames[i-1]);
-                            break;
-                        }
-                    }
                     break;
             }
             break;
@@ -178,7 +259,6 @@ void CreateComponents(HWND hwnd) {
     int x = 10;
     int y = 10;
 
-    g_recordButton = CreateButton(hwnd, x, y, 200, L"Start recording", SET_RECORD_MODE);
     CreateButton(hwnd, x, y, 200, L"Reset the playhead", RESET_PLAYHEAD);
     CreateButton(hwnd, x, y, 200, L"Launch game", LAUNCH_GAME);
 
@@ -190,7 +270,7 @@ void CreateComponents(HWND hwnd) {
     y -= 30;
     CreateButton(hwnd, x + 80, y, 70, L"Save", WRITE_TO_FILE);
 
-    g_demoName = CreateText(hwnd, x, y, 150, L"1-1.dem");
+    g_demoName = CreateText(hwnd, x, y, 150, L"1-0.dem");
 
     CreateButton(hwnd, x, y, 20, L"<<", GOTO_PREV_DEMO);
     y -= 30;
@@ -204,10 +284,6 @@ void CreateComponents(HWND hwnd) {
 
     g_instructionDisplay = CreateLabel(hwnd, x, y, 150, 400);
     SetTimer(hwnd, UPDATE_DISPLAY, 100, NULL);
-
-    y += 400;
-    g_bufferSize = CreateLabel(hwnd, x, y, 200, 16, L"Recorded inputs: 0");
-
 }
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow) {

@@ -60,6 +60,8 @@ public:
     void AddSigScan(const std::string& scan, const ScanFunc& scanFunc);
     [[nodiscard]] size_t ExecuteSigScans();
 
+    __int64 GetModuleBaseAddress(const std::wstring& moduleName);
+
     template<typename T>
     inline std::vector<T> ReadData(__int64 addr, size_t numItems) {
         std::vector<T> data(numItems, 0);
@@ -68,7 +70,11 @@ public:
     }
     template<typename T>
     inline std::vector<T> ReadData(const std::vector<__int64>& offsets, size_t numItems) {
-        return ReadData<T>(ComputeOffset(offsets), numItems);
+        return ReadData<T>(ComputeOffset(_baseAddress, offsets), numItems);
+    }
+    template<typename T>
+    inline std::vector<T> ReadData(const std::wstring& moduleName, const std::vector<__int64>& offsets, size_t numItems) {
+        return ReadData<T>(ComputeOffset(GetModuleBaseAddress(moduleName), offsets), numItems);
     }
     std::string ReadString(std::vector<__int64> offsets);
 
@@ -78,7 +84,11 @@ public:
     }
     template <typename T>
     inline void WriteData(const std::vector<__int64>& offsets, const std::vector<T>& data) {
-        WriteData<T>(ComputeOffset(offsets), data);
+        WriteData<T>(ComputeOffset(_baseAddress, offsets), data);
+    }
+    template <typename T>
+    inline void WriteData(const std::wstring& moduleName, const std::vector<__int64>& offsets, const std::vector<T>& data) {
+        WriteData<T>(ComputeOffset(GetModuleBaseAddress(moduleName), offsets), data);
     }
 
     void Intercept(__int64 firstLine, __int64 nextLine, const std::vector<byte>& data);
@@ -89,7 +99,7 @@ private:
     Memory() = default;
     void ReadDataInternal(uintptr_t addr, void* buffer, size_t bufferSize);
     void WriteDataInternal(uintptr_t addr, const void* buffer, size_t bufferSize);
-    uintptr_t ComputeOffset(std::vector<__int64> offsets);
+    uintptr_t ComputeOffset(__int64 baseAddress, std::vector<__int64> offsets);
 
     // Parts of the constructor / StartHeartbeat
     std::wstring _processName;

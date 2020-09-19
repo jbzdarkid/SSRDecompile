@@ -61,7 +61,12 @@ std::shared_ptr<InputBuffer> InputBuffer::Create(const std::shared_ptr<Memory>& 
                 THEN(                                           //
                     0x48, 0x89, 0x0B,                           // mov [rbx], rcx       ; Write the new buffer size
                     0x48, 0x01, 0xCB,                           // add rbx, rcx         ; rbx = first open buffer slot
-                    0x40, 0x8A, 0x33                            // mov sil, [rbx]       ; Copy input from buffer to the game
+                    0x40, 0x8A, 0x33,                           // mov sil, [rbx]       ; Copy input from buffer to the game
+                    IF_EQ(0x40, 0x80, 0xFE, Stop),              // cmp sil, 0xFF        ; If we read a Stop input
+                    THEN(
+                        0x48, 0xBB, LONG_TO_BYTES(buffer),      // mov rbx, buffer
+                        0xC6, 0x43, 0x08, Recording             // mov [rbx+8], 0x00    ; Change back to recording mode (idle state)
+                    )           
                 ),                                              //
                                                                 //
                 IF_EQ(0x3C, ForwardStep),                       // cmp al, 2            ; Single step (in playback mode)
@@ -179,35 +184,27 @@ std::string InputBuffer::GetDisplayText()
         else if (dir == South)  text += "South";
         else if (dir == East)   text += "East";
         else if (dir == West)   text += "West";
-        else                    text += "  ";
-        if (i == position) text += "\t<--- (Next)";
+        else if (dir == Stop)   text += "[Stop]";
+        if (i == position) text += "\t<---";
         text += '\n';
     }
     return text;
 }
 
-// std::vector<int> GetPlayerPosition() {
-//     if (!g_memory) return {0, 0, 0};
-//     return g_memory->ReadData<int>({0x1547668, 0x58, 0x98, 0x40, 0x18, 0x100, 0xD8}, 3);
-// }
+std::vector<int> InputBuffer::GetPlayerPosition() {
+    if (!_memory) return {0, 0, 0};
+    return _memory->ReadData<int>(L"UnityPlayer.dll", {0x1547668, 0x58, 0x98, 0x40, 0x18, 0x100, 0xD8}, 3);
+}
 
 void InputBuffer::SetPlayerPosition(const std::vector<int>& position) {
     if (!_memory) return;
-    // UnityPlayer.dll
-    _memory->WriteData<int>({0x6197A0000 + 0x1547668, 0x58, 0x98, 0x40, 0x18, 0x100, 0xD8}, position);
+    _memory->WriteData<int>(L"UnityPlayer.dll", {0x1547668, 0x58, 0x98, 0x40, 0x18, 0x100, 0xD8}, position);
 }
 
 void InputBuffer::ReadFromFile(const std::wstring& filename) {
     std::vector<Direction> buffer;
     std::ifstream file(filename);
     std::string line;
-    std::getline(file, line);
-    int x = std::stoi(line);
-    std::getline(file, line);
-    int y = std::stoi(line);
-    std::getline(file, line);
-    int z = std::stoi(line);
-    // SetPlayerPosition({x, y, z});
 
     while (std::getline(file, line)) {
         if (line == "North") buffer.push_back(North);
@@ -216,27 +213,13 @@ void InputBuffer::ReadFromFile(const std::wstring& filename) {
         if (line == "West")  buffer.push_back(West);
         if (line == "None")  buffer.push_back(None); // Allow "None" in demo files, in case we need to buffer something, at some point.
     }
+    buffer.push_back(Stop);
     Wipe();
     WriteData(buffer);
 }
 
 void InputBuffer::WriteToFile(const std::wstring& filename) {
-    std::vector<std::string> positionLines;
-    std::ifstream inFile(filename);
-
-    if (inFile.is_open()) {
-        std::string line;
-        std::getline(inFile, line);
-        positionLines.push_back(line);
-        std::getline(inFile, line);
-        positionLines.push_back(line);
-        std::getline(inFile, line);
-        positionLines.push_back(line);
-        inFile.close();
-    }
-
     std::ofstream file(filename);
-    for (const auto& line : positionLines) file << line << '\n';
     auto data = ReadData();
     size_t bufferSize = GetPosition();
     for (size_t i = 0; i<bufferSize; i++) {
@@ -249,8 +232,7 @@ void InputBuffer::WriteToFile(const std::wstring& filename) {
     file.close();
 }
 
-std::vector<Direction> InputBuffer::ReadData()
-{
+std::vector<Direction> InputBuffer::ReadData() {
     // Read up to the buffer size.
     const std::vector<byte> data = _memory->ReadData<byte>(_buffer + 9, BUFFER_SIZE - 9);
     std::vector<Direction> out(data.size(), None);
@@ -262,21 +244,17 @@ std::vector<Direction> InputBuffer::ReadData()
     return out;
 }
 
-void InputBuffer::SetPosition(__int64 position)
-{
+void InputBuffer::SetPosition(__int64 position) {
     _memory->WriteData<__int64>(_buffer, {position + 8});
 }
 
-void InputBuffer::WriteData(const std::vector<Direction>& data)
-{
+void InputBuffer::WriteData(const std::vector<Direction>& data) {
     ResetPosition();
     _memory->WriteData<Direction>(_buffer + 9, data);
 }
 
-void InputBuffer::Wipe()
-{
+void InputBuffer::Wipe() {
     ResetPosition();
-    SetMode(Nothing);
+    SetMode(Recording);
     WriteData(std::vector<Direction>(BUFFER_SIZE - 9, None));
 }
-

@@ -135,6 +135,24 @@ size_t Memory::ExecuteSigScans() {
     return notFound;
 }
 
+__int64 Memory::GetModuleBaseAddress(const std::wstring& moduleName) {
+    std::vector<HMODULE> modules;
+    modules.resize(1024);
+    DWORD sizeNeeded;
+    EnumProcessModules(_handle, &modules[0], sizeof(HMODULE) * static_cast<DWORD>(modules.size()), &sizeNeeded);
+    for (int i=0; i<sizeNeeded / sizeof(HMODULE); i++) {
+        HMODULE module = modules[i];
+        std::wstring fileName(256, L'\0');
+        GetModuleFileNameExW(_handle, module, &fileName[0], static_cast<DWORD>(fileName.size()));
+        if (fileName.find(moduleName) != std::wstring::npos) {
+            MODULEINFO moduleInfo;
+            GetModuleInformation(_handle, module, &moduleInfo, sizeof(moduleInfo));
+            return (__int64)moduleInfo.lpBaseOfDll;
+        }
+    }
+    return 0;
+}
+
 #define MAX_STRING 100
 // Technically this is ReadChar*, but this name makes more sense with the return type.
 std::string Memory::ReadString(std::vector<__int64> offsets) {
@@ -227,7 +245,7 @@ void Memory::WriteDataInternal(uintptr_t addr, const void* buffer, size_t buffer
     }
 }
 
-uintptr_t Memory::ComputeOffset(std::vector<__int64> offsets) {
+uintptr_t Memory::ComputeOffset(__int64 baseAddress, std::vector<__int64> offsets) {
     assert(offsets.size() > 0);
     assert(offsets.front() != 0);
 
@@ -235,7 +253,7 @@ uintptr_t Memory::ComputeOffset(std::vector<__int64> offsets) {
     const __int64 final_offset = offsets.back();
     offsets.pop_back();
 
-    uintptr_t cumulativeAddress = _baseAddress;
+    uintptr_t cumulativeAddress = baseAddress;
     for (const __int64 offset : offsets) {
         cumulativeAddress += offset;
 

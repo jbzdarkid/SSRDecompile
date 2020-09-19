@@ -25,6 +25,9 @@ enum Direction : byte {
     None,
     Down,
     Up,
+
+// Added by me
+    Stop = 0xFF,
 };
 
 class InputBuffer final
@@ -40,6 +43,7 @@ public:
 
     std::string GetDisplayText();
 
+    std::vector<int> GetPlayerPosition();
     void SetPlayerPosition(const std::vector<int>& position);
 
     void ReadFromFile(const std::wstring& filename);
