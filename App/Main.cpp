@@ -20,6 +20,7 @@ constexpr WORD LAUNCH_GAME       = 0x40A;
 constexpr WORD GOTO_NEXT_DEMO    = 0x40B;
 constexpr WORD GOTO_PREV_DEMO    = 0x40C;
 constexpr WORD CREATE_DEMO       = 0x40D;
+constexpr WORD WRITE_NONE        = 0x40E;
 
 std::shared_ptr<Memory> g_memory;
 std::shared_ptr<InputBuffer> g_inputBuffer;
@@ -236,6 +237,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
                         all.close();
                     }
                     break;
+                case WRITE_NONE:
+                    g_inputBuffer->WriteNone();
+                    break;
             }
             break;
     }
@@ -275,6 +279,7 @@ void CreateComponents(HWND hwnd) {
     CreateButton(hwnd, x, y, 200, L"Reset the playhead", RESET_PLAYHEAD);
     CreateButton(hwnd, x, y, 200, L"Launch game", LAUNCH_GAME);
     CreateButton(hwnd, x, y, 200, L"Create master demo", CREATE_DEMO);
+    CreateButton(hwnd, x, y, 200, L"Write empty instruction", WRITE_NONE);
 
     // Column 2
     x = 300;

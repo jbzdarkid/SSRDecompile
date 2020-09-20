@@ -226,6 +226,12 @@ void InputBuffer::WriteToFile(const std::wstring& filename) {
     file.close();
 }
 
+void InputBuffer::WriteNone() {
+    __int64 position = GetPosition();
+    _memory->WriteData<Direction>(_buffer + 9 + position, {None});
+    SetPosition(position + 1);
+}
+
 std::vector<Direction> InputBuffer::ReadData() {
     // Read up to the buffer size.
     const std::vector<byte> data = _memory->ReadData<byte>(_buffer + 9, BUFFER_SIZE - 9);

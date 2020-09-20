@@ -49,6 +49,8 @@ public:
     void ReadFromFile(const std::wstring& filename);
     void WriteToFile(const std::wstring& filename);
 
+    void WriteNone();
+
 private:
     InputBuffer() = default;
 
