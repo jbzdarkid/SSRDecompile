@@ -3,8 +3,7 @@
 
 const size_t BUFFER_SIZE = 0x100000;
 
-std::shared_ptr<InputBuffer> InputBuffer::Create(const std::shared_ptr<Memory>& memory)
-{
+std::shared_ptr<InputBuffer> InputBuffer::Create(const std::shared_ptr<Memory>& memory) {
     if (!memory) return nullptr;
 
     auto inputBuffer = std::shared_ptr<InputBuffer>(new InputBuffer());
@@ -150,35 +149,30 @@ std::shared_ptr<InputBuffer> InputBuffer::Create(const std::shared_ptr<Memory>& 
     return inputBuffer;
 }
 
-void InputBuffer::SetMode(Mode mode)
-{
+void InputBuffer::SetMode(Mode mode) {
     _memory->WriteData<byte>(_buffer + 8, {static_cast<byte>(mode)});
 }
 
-Mode InputBuffer::GetMode()
-{
+Mode InputBuffer::GetMode() {
     return static_cast<Mode>(_memory->ReadData<byte>(_buffer + 8, 1)[0]);
 }
 
-void InputBuffer::ResetPosition()
-{
+void InputBuffer::ResetPosition() {
     SetPosition(0);
 }
 
-__int64 InputBuffer::GetPosition()
-{
+__int64 InputBuffer::GetPosition() {
     return _memory->ReadData<__int64>(_buffer, 1)[0] - 8;
 }
 
-std::string InputBuffer::GetDisplayText()
-{
+std::string InputBuffer::GetDisplayText() {
     __int64 position = GetPosition();
     std::vector<Direction> data = ReadData();
 
-    size_t offset = (position > 5 ? position - 5 : 0);
+    size_t offset = std::max(0ll, position-10);
     
     std::string text;
-    for (size_t i=offset; i<offset + 11 && i < data.size(); i++) {
+    for (size_t i=offset; i<offset + 21 && i < data.size(); i++) {
         Direction dir = data[i];
         if (dir == North)       text += "North";
         else if (dir == South)  text += "South";

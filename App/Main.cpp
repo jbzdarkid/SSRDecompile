@@ -19,6 +19,7 @@ constexpr WORD UPDATE_DISPLAY    = 0x409;
 constexpr WORD LAUNCH_GAME       = 0x40A;
 constexpr WORD GOTO_NEXT_DEMO    = 0x40B;
 constexpr WORD GOTO_PREV_DEMO    = 0x40C;
+constexpr WORD CREATE_DEMO       = 0x40D;
 
 std::shared_ptr<Memory> g_memory;
 std::shared_ptr<InputBuffer> g_inputBuffer;
@@ -148,7 +149,7 @@ void LoadRelativeDemo(int offset) {
             SetWindowTextW(g_demoName, newName.c_str());
             SetWindowTextW(g_levelName, levelName.c_str());
             SetWindowTextW(g_playButton, L"Play");
-            g_inputBuffer->SetPlayerPosition({x, y, z});
+            // g_inputBuffer->SetPlayerPosition({x, y, z});
             g_inputBuffer->ReadFromFile(newName);
             return;
         }
@@ -157,6 +158,7 @@ void LoadRelativeDemo(int offset) {
     // Not a known demo, just load it (don't move the player)
     if (offset == 0) {
         g_inputBuffer->ReadFromFile(expectedName);
+        SetWindowTextW(g_levelName, NULL);
     }
 }
 
@@ -223,6 +225,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
                 case WRITE_TO_FILE:
                     g_inputBuffer->WriteToFile(GetWindowString(g_demoName));
                     break;
+                case CREATE_DEMO:
+                    {
+                        std::ofstream all("all.dem");
+                        std::string line;
+                        for (const auto& [demoName, _1, _2, _3, _4] : demoNames) {
+                            std::ifstream demo(demoName);
+                            while (std::getline(demo, line)) all << line << '\n';
+                        }
+                        all.close();
+                    }
+                    break;
             }
             break;
     }
@@ -261,6 +274,7 @@ void CreateComponents(HWND hwnd) {
 
     CreateButton(hwnd, x, y, 200, L"Reset the playhead", RESET_PLAYHEAD);
     CreateButton(hwnd, x, y, 200, L"Launch game", LAUNCH_GAME);
+    CreateButton(hwnd, x, y, 200, L"Create master demo", CREATE_DEMO);
 
     // Column 2
     x = 300;
@@ -271,6 +285,8 @@ void CreateComponents(HWND hwnd) {
     CreateButton(hwnd, x + 80, y, 70, L"Save", WRITE_TO_FILE);
 
     g_demoName = CreateText(hwnd, x, y, 150, L"1-0.dem");
+    g_levelName = CreateLabel(hwnd, x, y, 150, 16, L"Overworld Start");
+    y += 20;
 
     CreateButton(hwnd, x, y, 20, L"<<", GOTO_PREV_DEMO);
     y -= 30;
@@ -282,7 +298,7 @@ void CreateComponents(HWND hwnd) {
     y -= 30;
     CreateButton(hwnd, x + 130, y, 20, L">>", GOTO_NEXT_DEMO);
 
-    g_instructionDisplay = CreateLabel(hwnd, x, y, 150, 400);
+    g_instructionDisplay = CreateLabel(hwnd, x, y, 150, 500);
     SetTimer(hwnd, UPDATE_DISPLAY, 100, NULL);
 }
 
