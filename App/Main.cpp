@@ -66,8 +66,8 @@ std::vector<std::tuple<std::wstring, int, int, int, std::wstring>> demoNames = {
     {L"3-3.dem",       0,   0,  0, L"Cold Escarpment"},
     {L"3-4.dem",       0,   0,  0, L"Cold Frustration"},
     {L"3-5.dem",       0,   0,  0, L"Cold Trail"},
-    {L"3-6.dem",       0,   0,  0, L"Cold Pit"},
-    {L"3-7.dem",       0,   0,  0, L"Cold Cliff"},
+    {L"3-6.dem",       0,   0,  0, L"Cold Cliff"},
+    {L"3-7.dem",       0,   0,  0, L"Cold Pit"},
     {L"3-8.dem",       0,   0,  0, L"Cold Plateau"},
     {L"3-9.dem",       0,   0,  0, L"Cold Head"},
     {L"3-10.dem",      0,   0,  0, L"Cold Ladder"},
@@ -289,8 +289,8 @@ void CreateComponents(HWND hwnd) {
     y -= 30;
     CreateButton(hwnd, x + 80, y, 70, L"Save", WRITE_TO_FILE);
 
-    g_demoName = CreateText(hwnd, x, y, 150, L"1-0.dem");
-    g_levelName = CreateLabel(hwnd, x, y, 150, 16, L"Overworld Start");
+    g_demoName = CreateText(hwnd, x, y, 150, L"4-1.dem");
+    g_levelName = CreateLabel(hwnd, x, y, 150, 16, L"");
     y += 20;
 
     CreateButton(hwnd, x, y, 20, L"<<", GOTO_PREV_DEMO);
