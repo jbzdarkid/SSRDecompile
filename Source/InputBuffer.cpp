@@ -134,6 +134,11 @@ std::shared_ptr<InputBuffer> InputBuffer::Create(const std::shared_ptr<Memory>& 
         IF_EQ(0x48, 0x39, 0x5A, 0x14),                          // cmp [rdx+0x14], rbx  ; This code only runs for the 'undo' button. We aren't intercepting other inputs.
         THEN(                                                   //
             0x48, 0xBB, LONG_TO_BYTES(buffer),                  // mov rbx, buffer
+            IF_EQ(0x80, 0x7B, 0x08, Playing),                   // cmp [rbx+8], 0x00    ; Playback mode
+            THEN(
+
+
+            ),
             IF_EQ(0x80, 0x7B, 0x08, BackStep),                  // cmp [rbx+8], 0x10    ; Backstep (playback mode)
             THEN(                                               //
                 0xC6, 0x43, 0x08, Recording,                    // mov [rbx+8], 0x00    ; Change back to recording mode (idle state)
@@ -145,6 +150,10 @@ std::shared_ptr<InputBuffer> InputBuffer::Create(const std::shared_ptr<Memory>& 
         ),                                                      //
         0x5B,                                                   // pop rbx
     });
+
+    // TODO: Don't advance the playhead for an invalid move
+    // TODO: Properly track held UNDO inputs
+
 
     return inputBuffer;
 }
