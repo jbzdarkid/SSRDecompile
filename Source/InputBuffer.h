@@ -8,8 +8,8 @@ enum Mode : byte {
 
     BackStep = 0x10,
 
-    Nothing = 0x50,
-    UndoEnd = 0x51,
+    UNUSED1 = 0x50,
+    UNUSED2 = 0x51,
 };
 
 // From Direction.cs
