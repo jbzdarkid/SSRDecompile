@@ -14,6 +14,7 @@ std::shared_ptr<InputBuffer> InputBuffer::Create(const std::shared_ptr<Memory>& 
     memory->AddSigScan("BE 03000000 48 8B C6", [&playerInputString](__int64 address, const std::vector<byte>& data) {
         playerInputString = address + 5;
     });
+#ifdef _DEBUG
     __int64 getButton = 0;
     // Rewired.Player.GetButton(string)
     memory->AddSigScan("E9 58000000 48 8B 47 10", [&getButton](__int64 address, const std::vector<byte>& data) {
@@ -29,6 +30,10 @@ std::shared_ptr<InputBuffer> InputBuffer::Create(const std::shared_ptr<Memory>& 
     memory->AddSigScan("48 81 C4 E0 00 00 00 48 8B 86", [&doUndo](__int64 address, const std::vector<byte>& data) {
         doUndo = address;
     });
+    memory->AddSigScan("48 63 40 18 85 C0 7E 31", [memory](__int64 address, const std::vector<byte>& data) {
+        memory->WriteData<byte>(address - 16, {0xCC, 0xCC}); // This function shouldn't be called -- it signals dead inputs
+    });
+#endif
 
     size_t notFound = memory->ExecuteSigScans();
     if (notFound > 0) return nullptr;
@@ -69,8 +74,12 @@ std::shared_ptr<InputBuffer> InputBuffer::Create(const std::shared_ptr<Memory>& 
                     IF_EQ(0x40, 0x80, 0xFE, Stop),              // cmp sil, 0xFF        ; If we read a Stop input
                     THEN(
                         0x48, 0xBB, LONG_TO_BYTES(buffer),      // mov rbx, buffer
-                        0xC6, 0x43, 0x08, Recording             // mov [rbx+8], 0x00    ; Change back to recording mode (idle state)
-                    )           
+                        0xC6, 0x43, 0x08, Recording,            // mov [rbx+8], 0x00    ; Change back to recording mode (idle state)
+                        0x48, 0x8B, 0x0B,                       // mov rcx, [rbx]       ; rcx = current playhead
+                        0x48, 0xFF, 0xC9,                       // dec rcx
+                        IF_GE(0x48, 0x83, 0xF9, 0x08),          // cmp rcx, 8           ; Ensure that we don't bring the playhead too far back
+                        THEN(0x48, 0x89, 0x0B)                  // mov [rbx], rcx       ; Write new playhead
+                    )                                           //
                 ),                                              //
                                                                 //
                 IF_EQ(0x3C, ForwardStep),                       // cmp al, 2            ; Single step (in playback mode)
@@ -87,6 +96,7 @@ std::shared_ptr<InputBuffer> InputBuffer::Create(const std::shared_ptr<Memory>& 
         0x58,                                                   // pop rax
     });  
 
+#ifdef _DEBUG
     #define UNDO 'u', '\0', 'n', '\0', 'd', '\0', 'o', '\0'
     memory->Intercept("GetButton", getButton, getButton + 17, {
         // "is undo pressed" is in rax.
@@ -142,9 +152,7 @@ std::shared_ptr<InputBuffer> InputBuffer::Create(const std::shared_ptr<Memory>& 
         0x59,                                                   // pop rcx
         0x5B,                                                   // pop rbx
     });
-
-    // TODO: Don't advance the playhead for an invalid move
-
+#endif
 
     return inputBuffer;
 }
