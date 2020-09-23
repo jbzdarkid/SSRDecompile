@@ -173,7 +173,7 @@ std::string Memory::ReadString(std::vector<__int64> offsets) {
     return name;
 }
 
-void Memory::Intercept(__int64 firstLine, __int64 nextLine, const std::vector<byte>& data) {
+void Memory::Intercept(const std::string& name, __int64 firstLine, __int64 nextLine, const std::vector<byte>& data) {
     std::vector<byte> jumpBack = {
         0x41, 0x53,                                 // push r11
         0x49, 0xBB, LONG_TO_BYTES(firstLine + 15),  // mov r11, firstLine + 15
@@ -189,8 +189,8 @@ void Memory::Intercept(__int64 firstLine, __int64 nextLine, const std::vector<by
     injectionBytes.insert(injectionBytes.end(), jumpBack.begin(), jumpBack.end());
 
     __int64 addr = (__int64)VirtualAllocEx(_handle, NULL, injectionBytes.size(), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-    DebugPrint("Source address: " + DebugUtils::ToString(firstLine));
-    DebugPrint("Injection address: " + DebugUtils::ToString(addr));
+    DebugPrint(name + " Source address: " + DebugUtils::ToString(firstLine));
+    DebugPrint(name + " Injection address: " + DebugUtils::ToString(addr));
     WriteData<byte>(addr, injectionBytes);
 
     std::vector<byte> jumpAway = {
@@ -217,7 +217,7 @@ void Memory::Unintercept(__int64 firstLine, const std::vector<byte>& replacedCod
 __int64 Memory::AllocateBuffer(size_t bufferSize) {
     void* addr = VirtualAllocEx(_handle, NULL, bufferSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
     _allocations.emplace_back(addr);
-    DebugPrint("Allocated buffer: " + DebugUtils::ToString((__int64)addr));
+    DebugPrint("Allocated InputBuffer: " + DebugUtils::ToString((__int64)addr));
     return (__int64)addr;
 }
 

@@ -91,7 +91,7 @@ public:
         WriteData<T>(ComputeOffset(GetModuleBaseAddress(moduleName), offsets), data);
     }
 
-    void Intercept(__int64 firstLine, __int64 nextLine, const std::vector<byte>& data);
+    void Intercept(const std::string& name, __int64 firstLine, __int64 nextLine, const std::vector<byte>& data);
     void Unintercept(__int64 firstLine, const std::vector<byte>& replacedCode, __int64 addr);
     __int64 AllocateBuffer(size_t bufferSize);
 

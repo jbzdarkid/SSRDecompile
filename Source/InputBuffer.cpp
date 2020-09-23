@@ -37,7 +37,7 @@ std::shared_ptr<InputBuffer> InputBuffer::Create(const std::shared_ptr<Memory>& 
     inputBuffer->_buffer = buffer;
     inputBuffer->Wipe();
 
-    memory->Intercept(playerInputString, playerInputString + 17, {
+    memory->Intercept("Playerinputstring", playerInputString, playerInputString + 17, {
         // direction is in sil (single byte, but the register is technically a long because C#)
         0x50,                                                   // push rax
         0x53,                                                   // push rbx
@@ -88,7 +88,7 @@ std::shared_ptr<InputBuffer> InputBuffer::Create(const std::shared_ptr<Memory>& 
     });  
 
     #define UNDO 'u', '\0', 'n', '\0', 'd', '\0', 'o', '\0'
-    memory->Intercept(getButton, getButton + 17, {
+    memory->Intercept("GetButton", getButton, getButton + 17, {
         // "is undo pressed" is in rax.
         // rdi, r15 are safe registers
         0x53,                                                   // push rbx
@@ -113,7 +113,7 @@ std::shared_ptr<InputBuffer> InputBuffer::Create(const std::shared_ptr<Memory>& 
         0x5B,                                                   // pop rbx
     });
 
-    memory->Intercept(getButtonDown + 227, getButtonDown + 227 + 19, {
+    memory->Intercept("GetButtonDown", getButtonDown + 227, getButtonDown + 227 + 19, {
         0x53,                                                   // push rbx
         0x48, 0xBB, UNDO,                                       // mov rbx, 'undo'
         IF_EQ(0x48, 0x39, 0x5E, 0x14),                          // cmp [rsi+0x14], rbx  ; This code only runs for the 'undo' button. We aren't intercepting other inputs.
@@ -128,7 +128,7 @@ std::shared_ptr<InputBuffer> InputBuffer::Create(const std::shared_ptr<Memory>& 
         0x5B,                                                   // pop rbx
     });
 
-    memory->Intercept(doUndo, doUndo + 17, {
+    memory->Intercept("DoUndo", doUndo, doUndo + 17, {
         0x53,                                                   // push rbx
         0x51,                                                   // push rcx
         0x48, 0xBB, LONG_TO_BYTES(buffer),                      // mov rbx, buffer
