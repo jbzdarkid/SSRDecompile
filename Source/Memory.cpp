@@ -40,7 +40,9 @@ std::shared_ptr<Memory> Memory::Create(const std::wstring& processName) {
 
 Memory::~Memory() {
     for (const auto& interception : _interceptions) Unintercept(std::get<0>(interception), std::get<1>(interception), std::get<2>(interception));
-    for (void* addr : _allocations) VirtualFreeEx(_handle, addr, 0, MEM_RELEASE);
+    for (void* addr : _allocations) {
+        if (addr != nullptr) VirtualFreeEx(_handle, addr, 0, MEM_RELEASE);
+    }
 }
 
 __int64 Memory::ReadStaticInt(__int64 offset, int index, const std::vector<byte>& data, size_t lineLength) {
@@ -72,13 +74,13 @@ void Memory::AddSigScan(const std::string& scan, const ScanFunc& scanFunc) {
     _sigScans[scanBytes] = {false, scanFunc};
 }
 
-int find(const std::vector<byte> &data, const std::vector<byte>& search, size_t startIndex = 0) {
+int find(const std::vector<byte> &data, const std::vector<byte>& search) {
     const byte* dataBegin = &data[0];
     const byte* searchBegin = &search[0];
     size_t maxI = data.size();
     size_t maxJ = search.size();
 
-    for (int i = 0; i<maxI; i++) {
+    for (int i=0; i<maxI; i++) {
         bool match = true;
         for (size_t j=0; j<maxJ; j++) {
             if (*(dataBegin + i + j) == *(searchBegin + j)) {
@@ -189,7 +191,7 @@ void Memory::Intercept(__int64 firstLine, __int64 nextLine, const std::vector<by
     __int64 addr = (__int64)VirtualAllocEx(_handle, NULL, injectionBytes.size(), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
     DebugPrint("Source address: " + DebugUtils::ToString(firstLine));
     DebugPrint("Injection address: " + DebugUtils::ToString(addr));
-    WriteDataInternal(addr, &injectionBytes[0], injectionBytes.size());
+    WriteData<byte>(addr, injectionBytes);
 
     std::vector<byte> jumpAway = {
         0x41, 0x53,                         // push r11
@@ -209,7 +211,7 @@ void Memory::Intercept(__int64 firstLine, __int64 nextLine, const std::vector<by
 
 void Memory::Unintercept(__int64 firstLine, const std::vector<byte>& replacedCode, __int64 addr) {
     WriteData<byte>({firstLine}, replacedCode);
-    VirtualFreeEx(_handle, (void*)addr, 0, MEM_RELEASE);
+    if (addr != 0) VirtualFreeEx(_handle, (void*)addr, 0, MEM_RELEASE);
 }
 
 __int64 Memory::AllocateBuffer(size_t bufferSize) {

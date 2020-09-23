@@ -14,7 +14,7 @@ std::shared_ptr<InputBuffer> InputBuffer::Create(const std::shared_ptr<Memory>& 
     memory->AddSigScan("BE 03000000 48 8B C6", [&playerInputString](__int64 address, const std::vector<byte>& data) {
         playerInputString = address + 5;
     });
-    __int64 getButton= 0;
+    __int64 getButton = 0;
     // Rewired.Player.GetButton(string)
     memory->AddSigScan("E9 58000000 48 8B 47 10", [&getButton](__int64 address, const std::vector<byte>& data) {
         getButton = address + 93;
