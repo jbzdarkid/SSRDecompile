@@ -294,7 +294,7 @@ void CreateComponents(HWND hwnd) {
     y -= 30;
     CreateButton(hwnd, x + 80, y, 70, L"Save", WRITE_TO_FILE);
 
-    g_demoName = CreateText(hwnd, x, y, 150, L"4-1.dem");
+    g_demoName = CreateText(hwnd, x, y, 150, L"5-1.dem");
     g_levelName = CreateLabel(hwnd, x, y, 150, 16, L"");
     y += 20;
 

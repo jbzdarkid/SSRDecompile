@@ -30,6 +30,8 @@ std::shared_ptr<InputBuffer> InputBuffer::Create(const std::shared_ptr<Memory>& 
     memory->AddSigScan("48 81 C4 E0 00 00 00 48 8B 86", [&doUndo](__int64 address, const std::vector<byte>& data) {
         doUndo = address;
     });
+#else
+    // DiscardUndoSnapshot
     memory->AddSigScan("48 63 40 18 85 C0 7E 31", [memory](__int64 address, const std::vector<byte>& data) {
         memory->WriteData<byte>(address - 16, {0xCC, 0xCC}); // This function shouldn't be called -- it signals dead inputs
     });
