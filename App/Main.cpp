@@ -100,6 +100,7 @@ std::vector<std::tuple<std::wstring, std::wstring>> demoNames = {
 
     {L"6-1.dem",     L"Dead End"},
     {L"6-2.dem",     L"Sea Dragon"},
+    {L"6-2.5.dem",   L"Folklore Setup"},
     {L"6-3.dem",     L"Folklore"},
     {L"6-4.dem",     L"The Decay"},
     {L"6-5.dem",     L"The Splitting Bough"},
@@ -294,7 +295,7 @@ void CreateComponents(HWND hwnd) {
     y -= 30;
     CreateButton(hwnd, x + 80, y, 70, L"Save", WRITE_TO_FILE);
 
-    g_demoName = CreateText(hwnd, x, y, 150, L"5-1.dem");
+    g_demoName = CreateText(hwnd, x, y, 150, L"6-1.dem");
     g_levelName = CreateLabel(hwnd, x, y, 150, 16, L"");
     y += 20;
 
