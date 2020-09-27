@@ -102,14 +102,19 @@ std::vector<std::tuple<std::wstring, std::wstring>> demoNames = {
     {L"6-2.dem",     L"Sea Dragon"},
     {L"6-2.5.dem",   L"Folklore Setup"},
     {L"6-3.dem",     L"Folklore"},
+    {L"6-3.5.dem",   L"The Decay Setup"},
     {L"6-4.dem",     L"The Decay"},
     {L"6-5.dem",     L"The Splitting Bough"},
     {L"6-6.dem",     L"Captive Hydra"},
     {L"6-7.dem",     L"Rattlesnakes"},
     {L"6-8.dem",     L"Sty"},
+    {L"6-8.5.dem",   L"Split Face Setup"},
     {L"6-9.dem",     L"Split Face"},
+    {L"6-9.5.dem",   L"Four-faced Liar Setup"},
     {L"6-10.dem",    L"Four-faced Liar"},
+    {L"6-10.5.dem",  L"Suspension Bridge Setup"},
     {L"6-11.dem",    L"Suspension Bridge"},
+    {L"6-11.5.dem",  L"Curious Dragons Setup"},
     {L"6-12.dem",    L"Curious Dragons"},
     {L"6-13.dem",    L"Ancient Dam"},
     {L"6-14.dem",    L"Apex"},
@@ -281,6 +286,7 @@ void CreateComponents(HWND hwnd) {
     CreateButton(hwnd, x, y, 200, L"Create master demo", CREATE_DEMO);
     CreateButton(hwnd, x, y, 200, L"Reset the playhead", RESET_PLAYHEAD);
     CreateButton(hwnd, x, y, 200, L"Write empty instruction", WRITE_NONE);
+
 #else
     SendMessage(hwnd, WM_COMMAND, CREATE_DEMO, NULL);
     SendMessage(hwnd, WM_COMMAND, READ_FROM_FILE, NULL);
@@ -295,7 +301,7 @@ void CreateComponents(HWND hwnd) {
     y -= 30;
     CreateButton(hwnd, x + 80, y, 70, L"Save", WRITE_TO_FILE);
 
-    g_demoName = CreateText(hwnd, x, y, 150, L"6-1.dem");
+    g_demoName = CreateText(hwnd, x, y, 150, L"6-10.dem");
     g_levelName = CreateLabel(hwnd, x, y, 150, 16, L"");
     y += 20;
 
