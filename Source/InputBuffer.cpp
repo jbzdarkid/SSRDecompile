@@ -189,7 +189,7 @@ std::string InputBuffer::GetDisplayText() {
         else if (dir == East)   text += "East";
         else if (dir == West)   text += "West";
         else if (dir == Stop)   text += "[Stop]";
-        if (i == position) text += "\t<---";
+        if (i == position) text += "\t<---  " + std::to_string(position);
         text += '\n';
     }
     return text;

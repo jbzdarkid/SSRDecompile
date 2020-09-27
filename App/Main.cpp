@@ -24,10 +24,7 @@ constexpr WORD WRITE_NONE        = 0x40E;
 
 std::shared_ptr<Memory> g_memory;
 std::shared_ptr<InputBuffer> g_inputBuffer;
-HWND g_instructionDisplay;
-HWND g_playButton;
-HWND g_demoName;
-HWND g_levelName;
+HWND g_instructionDisplay, g_playButton, g_demoName, g_levelName;
 
 std::vector<std::tuple<std::wstring, std::wstring>> demoNames = {
     {L"1-0.dem",     L"Overworld Start"},
