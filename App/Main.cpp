@@ -173,6 +173,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
                     g_inputBuffer = InputBuffer::Create(g_memory);
                     if (!g_inputBuffer) break;
                     KillTimer(hwnd, ATTACH_MEMORY);
+#ifndef _DEBUG
+                    SendMessage(hwnd, WM_COMMAND, CREATE_DEMO, NULL);
+                    SendMessage(hwnd, WM_COMMAND, READ_FROM_FILE, NULL);
+#endif
                     break;
                 case UPDATE_DISPLAY:
                     if (g_inputBuffer) {
@@ -284,8 +288,6 @@ void CreateComponents(HWND hwnd) {
     CreateButton(hwnd, x, y, 200, L"Write empty instruction", WRITE_NONE);
 
 #else
-    SendMessage(hwnd, WM_COMMAND, CREATE_DEMO, NULL);
-    SendMessage(hwnd, WM_COMMAND, READ_FROM_FILE, NULL);
 #endif
 
     // Column 2
