@@ -51,6 +51,9 @@ public:
 
     void WriteNone();
 
+    // True if the injection worked
+    bool BreakOnBadInput();
+
 private:
     InputBuffer() = default;
 

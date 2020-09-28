@@ -21,6 +21,7 @@ constexpr WORD GOTO_NEXT_DEMO    = 0x40B;
 constexpr WORD GOTO_PREV_DEMO    = 0x40C;
 constexpr WORD CREATE_DEMO       = 0x40D;
 constexpr WORD WRITE_NONE        = 0x40E;
+constexpr WORD BAD_INPUT_BREAK   = 0x40F;
 
 std::shared_ptr<Memory> g_memory;
 std::shared_ptr<InputBuffer> g_inputBuffer;
@@ -116,6 +117,7 @@ std::vector<std::tuple<std::wstring, std::wstring>> demoNames = {
     {L"6-13.dem",    L"Ancient Dam"},
     {L"6-14.dem",    L"Apex"},
     {L"6-15.dem",    L"The Stone Tree"},
+    {L"6-15.5.dem",  L"The Backbone Setup"},
     {L"6-16.dem",    L"The Backbone"},
     {L"6-17.dem",    L"Baby Swan"},
     {L"6-18.dem",    L"Shy Dragon"},
@@ -245,6 +247,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
                 case WRITE_NONE:
                     g_inputBuffer->WriteNone();
                     break;
+                case BAD_INPUT_BREAK:
+                    if (g_inputBuffer->BreakOnBadInput()) {
+                        CheckDlgButton(hwnd, BAD_INPUT_BREAK, true);
+                    } else {
+                        CheckDlgButton(hwnd, BAD_INPUT_BREAK, false);
+                    }
+                    break;
             }
             break;
     }
@@ -276,6 +285,15 @@ HWND CreateText(HWND hwnd, int x, int& y, int width, LPCWSTR defaultText = L"", 
     return text;
 }
 
+HWND CreateCheckbox(HWND hwnd, int x, int& y, __int64 message) {
+    HWND checkbox = CreateWindow(L"BUTTON", NULL,
+        WS_VISIBLE | WS_CHILD | BS_CHECKBOX,
+        x, y + 2, 12, 12,
+        hwnd, (HMENU)message, NULL, NULL);
+    y += 20;
+    return checkbox;
+}
+
 void CreateComponents(HWND hwnd) {
     // Column 1
     int x = 10;
@@ -286,8 +304,8 @@ void CreateComponents(HWND hwnd) {
     CreateButton(hwnd, x, y, 200, L"Create master demo", CREATE_DEMO);
     CreateButton(hwnd, x, y, 200, L"Reset the playhead", RESET_PLAYHEAD);
     CreateButton(hwnd, x, y, 200, L"Write empty instruction", WRITE_NONE);
-
-#else
+    CreateLabel(hwnd, x + 20, y, 185, 16, L"Break on bad inputs");
+    CreateCheckbox(hwnd, x, y, BAD_INPUT_BREAK);
 #endif
 
     // Column 2
