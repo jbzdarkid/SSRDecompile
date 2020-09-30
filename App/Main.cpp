@@ -126,20 +126,20 @@ std::vector<std::tuple<std::wstring, std::wstring>> demoNames = {
     {L"6-19.dem",    L"Lovers' Sadness"},
     {L"6-19.5.dem",  L"Dragonclaw Setup"},
     {L"6-20.dem",    L"Dragonclaw"},
-    {L"6-20.5.dem",  L"Obscene Gesture Setup"}, // Bad instruction
+    {L"6-20.5.dem",  L"Obscene Gesture Setup"},
     {L"6-21.dem",    L"Obscene Gesture"},
-    {L"6-22.dem",    L"The Nursery"}, // Needs optimization
+    {L"6-22.dem",    L"The Nursery"},
     {L"6-22.5.dem",  L"Canal Setup"},
-    {L"6-23.dem",    L"Canal"}, // Needs optimization
+    {L"6-23.dem",    L"Canal"},
     {L"6-23.5.dem",  L"Mommy Swan Setup"},
-    {L"6-24.dem",    L"Mommy Swan"}, // Needs optimization
-    {L"6-24.5.dem",  L"Loft of the Spirit Setup"}, // Needs optimization
-    {L"6-25.dem",    L"Loft of the Spirit"}, // Needs optimization
-    {L"6-25.5.dem",    L"Wobblecliff Setup"}, // Needs optimization
-    {L"6-26.dem",    L"Wobblecliff"}, // Needs optimization
-    {L"6-26.5.dem",    L"Plateau Ferry Setup"}, // Needs optimization
+    {L"6-24.dem",    L"Mommy Swan"},
+    {L"6-24.5.dem",  L"Loft of the Spirit Setup"},
+    {L"6-25.dem",    L"Loft of the Spirit"},
+    {L"6-25.5.dem",  L"Wobblecliff Setup"},
+    {L"6-26.dem",    L"Wobblecliff"},
+    {L"6-26.5.dem",  L"Plateau Ferry Setup"}, // Needs optimization
     {L"6-27.dem",    L"Plateau Ferry"}, // Needs optimization
-    {L"6-27.5.dem",    L"God Pillar Setup"}, // Needs optimization
+    {L"6-27.5.dem",  L"God Pillar Setup"}, // Needs optimization
     {L"6-28.dem",    L"God Pillar"}, // Needs optimization
     {L"6-final.dem", L"Final cleanup"}, // Needs optimization
 };
