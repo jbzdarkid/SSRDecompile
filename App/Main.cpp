@@ -137,9 +137,9 @@ std::vector<std::tuple<std::wstring, std::wstring>> demoNames = {
     {L"6-25.dem",    L"Loft of the Spirit"},
     {L"6-25.5.dem",  L"Wobblecliff Setup"},
     {L"6-26.dem",    L"Wobblecliff"},
-    {L"6-26.5.dem",  L"Plateau Ferry Setup"}, // Needs optimization
-    {L"6-27.dem",    L"Plateau Ferry"}, // Needs optimization
-    {L"6-27.5.dem",  L"God Pillar Setup"}, // Needs optimization
+    {L"6-26.5.dem",  L"Plateau Ferry Setup"},
+    {L"6-27.dem",    L"Plateau Ferry"}, // Needs some optimization
+    {L"6-27.5.dem",  L"God Pillar Setup"},
     {L"6-28.dem",    L"God Pillar"}, // Needs optimization
     {L"6-final.dem", L"Final cleanup"}, // Needs optimization
 };
