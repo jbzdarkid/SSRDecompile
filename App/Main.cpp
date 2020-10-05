@@ -83,6 +83,7 @@ std::vector<std::tuple<std::wstring, std::wstring>> demoNames = {
     {L"4-6.dem",     L"Gator Paddock"},
     {L"4-final.dem", L"Overworld Sausage 4"},
 
+    // Consider Skeleton -> Slope View && Pressure Points -> Open Baths -> Drumlin
     {L"5-1.dem",     L"The Gorge"},
     {L"5-2.dem",     L"Widow's Finger"},
     {L"5-3.dem",     L"Skeleton"},
@@ -99,7 +100,7 @@ std::vector<std::tuple<std::wstring, std::wstring>> demoNames = {
     {L"6-1.dem",     L"Dead End"},
     {L"6-2.dem",     L"Sea Dragon"},
     {L"6-2.5.dem",   L"Folklore Setup"},
-    {L"6-3.dem",     L"Folklore"},
+    {L"6-3.dem",     L"Folklore"}, // Going up the left side is at least 11 instructions faster
     {L"6-3.5.dem",   L"The Decay Setup"},
     {L"6-4.dem",     L"The Decay"},
     {L"6-5.dem",     L"The Splitting Bough"},
