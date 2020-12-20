@@ -9,10 +9,15 @@ std::shared_ptr<InputBuffer> InputBuffer::Create(const std::shared_ptr<Memory>& 
     auto inputBuffer = std::shared_ptr<InputBuffer>(new InputBuffer());
     inputBuffer->_memory = memory;
 
-    __int64 playerInputString = 0;
     // Game.Playerinputstring()
+    __int64 playerInputString = 0;
     memory->AddSigScan("BE 03000000 48 8B C6", [&playerInputString](__int64 address, const std::vector<byte>& data) {
         playerInputString = address + 5;
+    });
+    // Rewired.Player.GetButton(string)
+    __int64 getButton = 0;
+    memory->AddSigScan("E9 58000000 48 8B 47 10", [&getButton](__int64 address, const std::vector<byte>& data) {
+        getButton = address + 93;
     });
     // Rewired.Player.GetButtonDown(string)
     __int64 getButtonDown = 0;
@@ -86,18 +91,89 @@ std::shared_ptr<InputBuffer> InputBuffer::Create(const std::shared_ptr<Memory>& 
         0x58,                                                   // pop rax
     });  
     #define UNDO 'u', '\0', 'n', '\0', 'd', '\0', 'o', '\0'
+    #define REST 'r', '\0', 'e', '\0', 's', '\0', 't', '\0'
+    memory->Intercept("GetButton", getButton, getButton + 17, {
+        0x53,                                                   // push rbx
+        0x51,                                                   // push rcx
+        0x48, 0xBB, UNDO,                                       // mov rbx, 'undo'
+        0x48, 0x8B, 0x4D, 0xE8,                                 // mov rcx, [rbp-0x18]  ; Reload the button string from the local variable
+        IF_EQ(0x48, 0x39, 0x59, 0x14),                          // cmp [rcx+0x14], rbx  ; This code only runs for the 'undo' button
+        THEN(                                                   //
+            0x48, 0xBB, LONG_TO_BYTES(buffer),                  // mov rbx, buffer
+            IF_EQ(0x80, 0x7B, 0x08, Playing),                   // cmp [rbx+8], 0x01    ; Playback mode
+            THEN(                                               //
+                0x48, 0x8B, 0x0B,                               // mov rcx, [rbx]       ; rcx = current buffer size
+                0x48, 0xFF, 0xC1,                               // inc rcx              ; rcx = new buffer size
+                0x48, 0x01, 0xCB,                               // add rbx, rcx         ; rbx = next input from the buffer
+                IF_EQ(0x80, 0x3B, Undo),                        // cmp [rbx], Undo      ; If we read a undo input
+                THEN(0xB0, 0x01)                                // mov al, 0x01         ; Return true (button is pressed)
+            )                                                   //
+        ),                                                      //
+        0x48, 0xBB, REST,                                       // mov rbx, 'rest'
+        0x48, 0x8B, 0x4D, 0xE8,                                 // mov rcx, [rbp-0x18]  ; Reload the button string from the local variable
+        IF_EQ(0x48, 0x39, 0x59, 0x14),                          // cmp [rcx+0x14], rbx  ; This code only runs for the 'restart' button
+        THEN(                                                   //
+            0x48, 0xBB, LONG_TO_BYTES(buffer),                  // mov rbx, buffer
+            IF_EQ(0x80, 0x7B, 0x08, Playing),                   // cmp [rbx+8], 0x01    ; Playback mode
+            THEN(                                               //
+                0x48, 0x8B, 0x0B,                               // mov rcx, [rbx]       ; rcx = current buffer size
+                0x48, 0xFF, 0xC1,                               // inc rcx              ; rcx = new buffer size
+                0x48, 0x01, 0xCB,                               // add rbx, rcx         ; rbx = next input from the buffer
+                IF_EQ(0x80, 0x3B, Reset),                       // cmp [rbx], Reset     ; If we read a reset input
+                THEN(0xB0, 0x01)                                // mov al, 0x01         ; Return true (button is pressed)
+            )                                                   //
+        ),                                                      //
+        0x59,                                                   // pop rcx
+        0x5B,                                                   // pop rbx
+    });
+
     memory->Intercept("GetButtonDown", getButtonDown + 227, getButtonDown + 227 + 19, {
         0x53,                                                   // push rbx
+        0x51,                                                   // push rcx
         0x48, 0xBB, UNDO,                                       // mov rbx, 'undo'
-        IF_EQ(0x48, 0x39, 0x5E, 0x14),                          // cmp [rsi+0x14], rbx  ; This code only runs for the 'undo' button. We aren't intercepting other inputs.
+        IF_EQ(0x48, 0x39, 0x5E, 0x14),                          // cmp [rsi+0x14], rbx  ; This code only runs for the 'undo' button
         THEN(                                                   //
             0x48, 0xBB, LONG_TO_BYTES(buffer),                  // mov rbx, buffer
             IF_EQ(0x80, 0x7B, 0x08, BackStep),                  // cmp [rbx+8], 0x10    ; Backstep (playback mode)
             THEN(                                               //
                 0xC6, 0x43, 0x08, Recording,                    // mov [rbx+8], 0x00    ; Change back to recording mode (idle state)
                 0xB0, 0x01                                      // mov al, 0x01         ; Return true (button is pressed)
+            ),                                                  //
+            IF_EQ(0x80, 0x7B, 0x08, Playing),                   // cmp [rbx+8], 0x01    ; Playback mode
+            THEN(                                               //
+                0x48, 0x8B, 0x0B,                               // mov rcx, [rbx]
+                0x48, 0xFF, 0xC1,                               // inc rcx              ; rcx = new buffer size
+                0x48, 0x01, 0xCB,                               // add rbx, rcx         ; rbx = next input from the buffer
+                IF_EQ(0x80, 0x3B, Undo),                        // cmp [rbx], Undo      ; If we read a undo input
+                THEN(
+                    0x48, 0xBB, LONG_TO_BYTES(buffer),          // mov rbx, buffer
+                    0x48, 0x8B, 0x0B,                           // mov rcx, [rbx]       ; rcx = current buffer size
+                    0x48, 0xFF, 0xC1,                           // inc rcx              ; rcx = new buffer size
+                    0x48, 0x89, 0x0B,                           // mov [rbx], rcx       ; Write the new buffer size
+                    0xB0, 0x01                                  // mov al, 0x01         ; Return true (button is pressed)
+                )
             )                                                   //
         ),                                                      //
+        0x48, 0xBB, REST,                                       // mov rbx, 'rest'
+        IF_EQ(0x48, 0x39, 0x5E, 0x14),                          // cmp [rsi+0x14], rbx  ; This code only runs for the 'restart' button
+        THEN(                                                   //
+            0x48, 0xBB, LONG_TO_BYTES(buffer),                  // mov rbx, buffer
+            IF_EQ(0x80, 0x7B, 0x08, Playing),                   // cmp [rbx+8], 0x01    ; Only relevant for playing mode
+            THEN(
+                0x48, 0x8B, 0x0B,                               // mov rcx, [rbx]
+                0x48, 0xFF, 0xC1,                               // inc rcx              ; rcx = new buffer size
+                0x48, 0x01, 0xCB,                               // add rbx, rcx         ; rbx = next input from the buffer
+                IF_EQ(0x80, 0x3B, Reset),                       // cmp [rbx], Reset     ; If we read a reset input
+                THEN(
+                    0x48, 0xBB, LONG_TO_BYTES(buffer),          // mov rbx, buffer
+                    0x48, 0x8B, 0x0B,                           // mov rcx, [rbx]       ; rcx = current playhead
+                    0x48, 0xFF, 0xC1,                           // inc rcx              ; rcx = new buffer size
+                    0x48, 0x89, 0x0B,                           // mov [rbx], rcx       ; Write new buffer size
+                    0xB0, 0x01                                  // mov al, 0x01         ; Return true (button is pressed)
+                )                                               //
+            )                                                   //
+        ),                                                      //
+        0x59,                                                   // pop rcx
         0x5B,                                                   // pop rbx
     });
 
@@ -148,6 +224,8 @@ std::string InputBuffer::GetDisplayText() {
         else if (dir == South)  text += "South";
         else if (dir == East)   text += "East";
         else if (dir == West)   text += "West";
+        else if (dir == Undo)   text += "[Undo]";
+        else if (dir == Reset)  text += "[Reset]";
         else if (dir == Stop)   text += "[Stop]";
         if (i == position) text += "\t<---  " + std::to_string(position);
         text += '\n';
@@ -175,6 +253,8 @@ void InputBuffer::ReadFromFile(const std::wstring& filename) {
         if (line == "South") buffer.push_back(South);
         if (line == "East")  buffer.push_back(East);
         if (line == "West")  buffer.push_back(West);
+        if (line == "Undo")  buffer.push_back(Undo);
+        if (line == "Reset") buffer.push_back(Reset);
         if (line == "None")  buffer.push_back(None); // Allow "None" in demo files, in case we need to buffer something, at some point.
     }
     buffer.push_back(Stop);

@@ -28,6 +28,8 @@ enum Direction : byte {
 
 // Added by me
     Stop = 0xFF,
+    Undo = 0xFE,
+    Reset = 0xFD,
 };
 
 class InputBuffer final
