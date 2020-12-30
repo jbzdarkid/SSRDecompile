@@ -5,3 +5,5 @@ App/x64/*
 Source/x64/*
 x64/*
 GithubPackage/*
+nocheckin/*
+_build
