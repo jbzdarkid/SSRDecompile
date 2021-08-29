@@ -248,12 +248,20 @@ void InputBuffer::ReadFromFile(const std::wstring& filename) {
     std::ifstream file(filename);
     std::string line;
 
+    bool skip = false;
     while (std::getline(file, line)) {
+        if (skip) {
+            skip = false;
+            buffer.pop_back();
+        }
         if (line == "North") buffer.push_back(North);
         if (line == "South") buffer.push_back(South);
         if (line == "East")  buffer.push_back(East);
         if (line == "West")  buffer.push_back(West);
-        if (line == "Undo")  buffer.push_back(Undo);
+        if (line == "Undo")  {
+            skip = true;
+            continue;
+        }
         if (line == "Reset") buffer.push_back(Reset);
         if (line == "None")  buffer.push_back(None); // Allow "None" in demo files, in case we need to buffer something, at some point.
     }
