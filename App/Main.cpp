@@ -22,10 +22,13 @@ constexpr WORD GOTO_PREV_DEMO    = 0x40C;
 constexpr WORD CREATE_DEMO       = 0x40D;
 constexpr WORD WRITE_NONE        = 0x40E;
 constexpr WORD BAD_INPUT_BREAK   = 0x40F;
+constexpr WORD UPDATE_TIMER      = 0x410;
 
 std::shared_ptr<Memory> g_memory;
 std::shared_ptr<InputBuffer> g_inputBuffer;
-HWND g_instructionDisplay, g_playButton, g_demoName, g_levelName;
+int64_t g_startTime = 0;
+int64_t g_lastPosition = 0;
+HWND g_instructionDisplay, g_playButton, g_demoName, g_levelName, g_timer;
 
 std::vector<std::tuple<std::wstring, std::wstring>> demoNames = {
     {L"1-0.dem",     L"Overworld Start"},
@@ -164,6 +167,24 @@ std::wstring GetWindowString(HWND hwnd) {
     return text;
 }
 
+namespace std::chrono {
+int64_t GetEpochMillis() {
+    return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+}
+
+const char* GetDuration() {
+    static char timeBuffer[100] = {'\0'};
+    if (g_startTime == 0) return "00:00.000";
+    time_t delta = std::chrono::GetEpochMillis() - g_startTime;
+
+    int millis = delta % 1'000;
+    int seconds = (delta / 1'000) % 60;
+    int minutes = (delta / 60'000) % 60;
+    snprintf(timeBuffer, sizeof(timeBuffer) / sizeof(timeBuffer[0]), "%02d:%02d.%03d", minutes, seconds, millis);
+    return timeBuffer;
+}
+}
+
 void LoadRelativeDemo(int offset) {
     std::wstring expectedName = GetWindowString(g_demoName);
     for (size_t i=0; i<demoNames.size(); i++) {
@@ -176,6 +197,7 @@ void LoadRelativeDemo(int offset) {
             SetWindowTextW(g_levelName, levelName.c_str());
             SetWindowTextW(g_playButton, L"Play");
             g_inputBuffer->ReadFromFile(newName);
+            g_startTime = 0; // Reset the timer
             return;
         }
     }
@@ -206,6 +228,18 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
                         SetWindowTextA(g_instructionDisplay, g_inputBuffer->GetDisplayText().c_str());
                     }
                     break;
+                case UPDATE_TIMER:
+                    const char* timerText = std::chrono::GetDuration();
+                    SetWindowTextA(g_timer, timerText);
+                    if (g_inputBuffer && g_startTime != 0) {
+                        int64_t currentPosition = g_inputBuffer->GetPosition();
+                        if (g_lastPosition != currentPosition) {
+                            OutputDebugStringA(timerText);
+                            OutputDebugStringA("\n");
+                            g_lastPosition = currentPosition;
+                        }
+                    }
+                    break;
             }
             break;
         case WM_DESTROY:
@@ -231,6 +265,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
                     } else {
                         g_inputBuffer->SetMode(Playing);
                         SetWindowTextW(g_playButton, L"Pause");
+                        g_startTime = std::chrono::GetEpochMillis();
                     }
                     break;
                 case PLAY_ONE_FRAME:
@@ -329,6 +364,13 @@ void CreateComponents(HWND hwnd) {
     CreateCheckbox(hwnd, x, y, BAD_INPUT_BREAK);
 #endif
 
+#ifdef _DEBUG
+    CreateLabel(hwnd, x, y, 100, 16, L"Level timer: ");
+#else
+    CreateLabel(hwnd, x, y, 100, 16, L"Game timer: ");
+#endif
+    g_timer = CreateLabel(hwnd, x + 80, y, 100, 16, L"00:00.000");
+
     // Column 2
     x = 300;
     y = 10;
@@ -358,6 +400,7 @@ void CreateComponents(HWND hwnd) {
 
     g_instructionDisplay = CreateLabel(hwnd, x, y, 150, 500);
     SetTimer(hwnd, UPDATE_DISPLAY, 100, NULL);
+    SetTimer(hwnd, UPDATE_TIMER, 10, NULL);
 }
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow) {
