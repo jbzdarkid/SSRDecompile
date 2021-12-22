@@ -258,10 +258,14 @@ void InputBuffer::ReadFromFile(const std::wstring& filename) {
         if (line == "South") buffer.push_back(South);
         if (line == "East")  buffer.push_back(East);
         if (line == "West")  buffer.push_back(West);
-        if (line == "Undo")  {
+#ifdef _DEBUG // Only skip Undos in Debug mode -- in release mode, we need them for the TAS.
+        if (line == "Undo") {
             skip = true;
             continue;
         }
+#else
+        if (line == "Undo")  buffer.push_back(Undo);
+#endif
         if (line == "Reset") buffer.push_back(Reset);
         if (line == "None")  buffer.push_back(None); // Allow "None" in demo files, in case we need to buffer something, at some point.
     }

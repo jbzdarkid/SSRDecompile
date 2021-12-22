@@ -27,7 +27,6 @@ constexpr WORD UPDATE_TIMER      = 0x410;
 std::shared_ptr<Memory> g_memory;
 std::shared_ptr<InputBuffer> g_inputBuffer;
 int64_t g_startTime = 0;
-int64_t g_lastPosition = 0;
 HWND g_instructionDisplay, g_playButton, g_demoName, g_levelName, g_timer;
 
 std::vector<std::tuple<std::wstring, std::wstring>> demoNames = {
@@ -229,16 +228,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
                     }
                     break;
                 case UPDATE_TIMER:
+#ifdef _DEBUG
                     const char* timerText = std::chrono::GetDuration();
                     SetWindowTextA(g_timer, timerText);
-                    if (g_inputBuffer && g_startTime != 0) {
-                        int64_t currentPosition = g_inputBuffer->GetPosition();
-                        if (g_lastPosition != currentPosition) {
-                            OutputDebugStringA(timerText);
-                            OutputDebugStringA("\n");
-                            g_lastPosition = currentPosition;
-                        }
-                    }
+#endif
                     break;
             }
             break;
@@ -366,10 +359,9 @@ void CreateComponents(HWND hwnd) {
 
 #ifdef _DEBUG
     CreateLabel(hwnd, x, y, 100, 16, L"Level timer: ");
-#else
-    CreateLabel(hwnd, x, y, 100, 16, L"Game timer: ");
-#endif
     g_timer = CreateLabel(hwnd, x + 80, y, 100, 16, L"00:00.000");
+    SetTimer(hwnd, UPDATE_TIMER, 10, NULL);
+#endif
 
     // Column 2
     x = 300;
@@ -400,7 +392,6 @@ void CreateComponents(HWND hwnd) {
 
     g_instructionDisplay = CreateLabel(hwnd, x, y, 150, 500);
     SetTimer(hwnd, UPDATE_DISPLAY, 100, NULL);
-    SetTimer(hwnd, UPDATE_TIMER, 10, NULL);
 }
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow) {
