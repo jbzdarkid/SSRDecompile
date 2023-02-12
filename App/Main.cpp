@@ -55,10 +55,10 @@ std::vector<std::tuple<std::wstring, std::wstring>> demoNames = {
     {L"2-4.dem",     L"The Great Tower"},
     {L"2-5.dem",     L"The Paddock"},
     {L"2-6.dem",     L"Beautiful Horizon"},
-    {L"2-7.dem",     L"Barrow Set"},
-    {L"2-8.dem",     L"Rough Field"},
+    {L"2-7.dem",     L"Rough Field"},
+    {L"2-8.dem",     L"Twisty Farm"},
     {L"2-9.dem",     L"Fallow Earth"},
-    {L"2-10.dem",    L"Twisty Farm"},
+    {L"2-10.dem",    L"Barrow Set"},
     {L"2-final.dem", L"Overworld Sausage 2"},
 
     {L"3-1.dem",     L"Cold Jag"},
