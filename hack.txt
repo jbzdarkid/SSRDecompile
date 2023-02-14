@@ -1,0 +1,25 @@
+    private static Dictionary<string, Direction> DirectionMap = new Dictionary<string, Direction> {
+        { "North", Direction.North },
+        { "South", Direction.South },
+        { "East", Direction.East },
+        { "West", Direction.West },
+        { "Undo", Direction.None },
+    };
+    private static int InputBufferIdx = 0;
+    private static string[] InputBuffer = System.IO.File.ReadAllLines("C:\\Users\\admin\\Documents\\GitHub\\SSRDecompile\\App\\all.dem");
+
+    private static List<string> OutputBuffer = new List<string>();
+
+    private Direction Playerinputstring()
+    {
+        if (Game.InputBufferIdx < Game.InputBuffer.Length)
+        {
+          
+          Game.OutputBuffer.Add(string.Format("{0}\t{1}\t{2}", Game.InputBufferIdx, Time.frameCount, Game.InputBuffer[Game.InputBufferIdx]));
+          return Game.InputBuffer[Game.InputBufferIdx++];
+        }
+        if (Game.InputBufferIdx == Game.InputBuffer.Length)
+        {
+          Game.InputBufferIdx++;
+          File.WriteAllLines("C:\\Users\\admin\\Documents\\GitHub\\SSRDecompile\\App\\timings.txt", Game.OutputBuffer.ToArray());
+        }
