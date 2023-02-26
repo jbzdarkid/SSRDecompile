@@ -14,12 +14,22 @@
     {
         if (Game.InputBufferIdx < Game.InputBuffer.Length)
         {
-          
           Game.OutputBuffer.Add(string.Format("{0}\t{1}\t{2}", Game.InputBufferIdx, Time.frameCount, Game.InputBuffer[Game.InputBufferIdx]));
-          return Game.InputBuffer[Game.InputBufferIdx++];
+          return DirectionMap[Game.InputBuffer[Game.InputBufferIdx++]];
         }
         if (Game.InputBufferIdx == Game.InputBuffer.Length)
         {
           Game.InputBufferIdx++;
-          File.WriteAllLines("C:\\Users\\admin\\Documents\\GitHub\\SSRDecompile\\App\\timings.txt", Game.OutputBuffer.ToArray());
+          System.IO.File.WriteAllLines("C:\\Users\\admin\\Documents\\GitHub\\SSRDecompile\\App\\timings.txt", Game.OutputBuffer.ToArray());
         }
+
+
+/* ... */
+
+    if (Game.InputBufferIdx < Game.InputBuffer.Length && Game.InputBuffer[Game.InputBufferIdx] == "Undo")
+    {
+      Game.OutputBuffer.Add(string.Format("{0}\t{1}\t{2}", Game.InputBufferIdx, Time.frameCount, Game.InputBuffer[Game.InputBufferIdx]));
+      Game.InputBufferIdx++;
+      this.DoUndo();
+    }
+		else if (ReInput.players.GetPlayer(0).GetButtonDown("undo") || this.undoholdtime >= this.currentundorepeatrate)

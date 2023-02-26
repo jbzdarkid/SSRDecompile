@@ -1639,6 +1639,8 @@ East
 West
 West
 West
+Undo
+West
 North
 West
 West
@@ -1779,8 +1781,10 @@ South
 South
 South
 East
+West
 West
 West
+Undo
 West
 West
 North
@@ -1883,6 +1887,8 @@ West
 South
 North
 East
+South
+Undo
 South
 South
 West
@@ -2008,6 +2014,8 @@ East
 East
 East
 East
+West
+Undo
 West
 West
 West
@@ -2073,6 +2081,8 @@ North
 North
 East
 East
+South
+Undo
 South
 North
 West
@@ -2235,6 +2245,8 @@ North
 East
 East
 East
+South
+Undo
 South
 North
 North
@@ -3454,8 +3466,10 @@ North
 North
 East
 South
+West
 West
 West
+Undo
 West
 South
 North
@@ -3671,6 +3685,8 @@ East
 North
 South
 South
+East
+Undo
 East
 West
 West
@@ -3812,6 +3828,8 @@ South
 West
 East
 East
+East
+Undo
 East
 South
 North
@@ -3995,6 +4013,8 @@ South
 South
 South
 West
+Undo
+West
 East
 East
 South
@@ -4161,6 +4181,8 @@ North
 South
 South
 South
+North
+Undo
 North
 North
 North
@@ -4231,6 +4253,8 @@ West
 North
 North
 South
+Undo
+South
 East
 East
 East
@@ -4409,6 +4433,8 @@ North
 North
 East
 East
+West
+Undo
 West
 South
 West
@@ -10870,6 +10896,8 @@ East
 East
 North
 South
+Undo
+South
 South
 South
 West
@@ -14190,6 +14218,8 @@ West
 West
 West
 West
+East
+Undo
 East
 East
 East
