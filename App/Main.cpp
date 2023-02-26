@@ -179,7 +179,12 @@ const char* GetDuration() {
     int millis = delta % 1'000;
     int seconds = (delta / 1'000) % 60;
     int minutes = (delta / 60'000) % 60;
-    snprintf(timeBuffer, sizeof(timeBuffer) / sizeof(timeBuffer[0]), "%02d:%02d.%03d", minutes, seconds, millis);
+    int hours = (int)(delta / 3'600'000);
+    if (hours > 0) {
+      snprintf(timeBuffer, sizeof(timeBuffer) / sizeof(timeBuffer[0]), "%d:%02d:%02d.%03d", hours, minutes, seconds, millis);
+    } else {
+      snprintf(timeBuffer, sizeof(timeBuffer) / sizeof(timeBuffer[0]), "%02d:%02d.%03d", minutes, seconds, millis);
+    }
     return timeBuffer;
 }
 }
