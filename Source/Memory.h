@@ -41,6 +41,7 @@ using byte = unsigned char;
 #define IF_LE(...) __VA_ARGS__, 0x77 // ja
 #define THEN(...) ARGCOUNT(__VA_ARGS__), __VA_ARGS__
 #define DO_WHILE(...) __VA_ARGS__, static_cast<byte>(-1 - ARGCOUNT(__VA_ARGS__))
+#define DO_WHILE_GT_ZERO(...) __VA_ARGS__, 0x77, static_cast<byte>(-2 - ARGCOUNT(__VA_ARGS__)) // Must end on a 'dec' instruction to set zero flags correclty.
 
 // https://github.com/erayarslan/WriteProcessMemory-Example
 // http://stackoverflow.com/q/32798185
